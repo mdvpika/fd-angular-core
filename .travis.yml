@@ -1,0 +1,12 @@
+language: node_js
+node_js:
+- '0.12'
+- '0.11'
+deploy:
+  provider: npm
+  email: simon.menke@gmail.com
+  api_key:
+    secure: i+1xOIquzQkfkecDekRMYle3ZKc5vWu6c6J9lu+fpCdCTP7VlH2EqI2ENqop7RYabKyFZusChbf963xaNeC6/AQXwAwJ3/siyJB6y1cgVY0t9Zyhq2LRiTZULfoRn4/b+A3Yuw0TMZ5KY9rNsRNRaBfGb8+MfSQa8WPzUZPLsw8h44s1yy4ru/9WYpoQQncs9IPdJsRhMqJ+ZuvV9e8ZoJpEkDveJH8mbKHAJqJCVsbUqoVUsbS2W1Y/BAd6SpZlUYoVeVCwZx7wa0BdCHjiLjukICmH2usorNbX/aDdzg7iTT+D5glhg0A2Y8ctmI3BhH5HMitV3kd56x5nBuDPkBTVddWh795bCODWcUainrMTcXvLWonzC/nKnXyM+QlyJb9SsC86CL/Md8nbTbR2RD7liHQL0MiVY8AQziluvUvr0HClB/lg9xKzBZ1ngtflo1tipf8JTtz457QMaH3S/JLbiYyHR7MsRV/WyLChLVvfXnjlfg5VbDSfa/TlWh503jTc749Gd/64L+FeGv5vViMD62DmLVpcqQEl7QEccKVKaaSkJT81OJuOgOL6qeRGt71o7cYG4u1kYjGl/I4nfHoxLPxWmJFdsnv5VpfsDiNwjCaAxbmaYARPwGbG+L+dub9Nb7yxcVWmDSqQptPhbBw4zFN78OkcEn6LrplBtxw=
+  on:
+    tags: true
+    repo: fd/fd-angular-core

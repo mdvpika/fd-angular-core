@@ -1,0 +1,34 @@
+{
+  "name": "fd-angular-core",
+  "version": "0.0.1",
+  "description": "Personal Angular utils",
+  "repository": "https://github.com/fd/fd-angular-core.git",
+  "main": "lib/index.js",
+  "scripts": {
+    "test": "mocha test",
+    "build": "make"
+  },
+  "keywords": [
+    "utils",
+    "angular"
+  ],
+  "author": "Simon Menke",
+  "license": "MIT",
+  "devDependencies": {
+    "babel": "^5.4.7",
+    "browserify": "^10.2.3",
+    "exorcist": "^0.4.0",
+    "mocha": "^2.2.5",
+    "unit.js": "^2.0.0"
+  },
+  "dependencies": {
+    "angular": "1.x.x",
+    "angular-ui-router": "0.x.x",
+    "angular-ui-router.statehelper": "1.x.x",
+    "jquery": "*"
+  },
+  "jspm": {
+    "format": "es6",
+    "main": "src/index.js"
+  }
+}
