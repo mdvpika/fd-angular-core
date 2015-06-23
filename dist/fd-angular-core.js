@@ -170,6 +170,7 @@ function State(opts) {
   var resolve = _opts$resolve === undefined ? {} : _opts$resolve;
   var template = opts.template;
   var templateUrl = opts.templateUrl;
+  var bindTo = opts.bindTo;
 
   return register;
 
@@ -187,6 +188,9 @@ function State(opts) {
     if (template === false) {
       template = undefined;
       templateUrl = undefined;
+      if (children && children.length > 0) {
+        template = '<ui-view></ui-view>';
+      }
     }
 
     if (constructor.onEnter) {
@@ -203,11 +207,16 @@ function State(opts) {
       }
     }
 
+    var controllerAs = name;
+    if (bindTo) {
+      controllerAs = bindTo;
+    }
+
     var state = {
       name: name,
       template: template,
       templateUrl: templateUrl,
-      controllerAs: name,
+      controllerAs: controllerAs,
 
       children: children.map(function (c) {
         return Object.create(c.$state, {});

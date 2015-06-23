@@ -18,7 +18,8 @@ export function State(opts) {
     scope={},
     resolve={},
     template,
-    templateUrl
+    templateUrl,
+    bindTo
   } = opts;
   return register;
 
@@ -36,6 +37,9 @@ export function State(opts) {
     if (template === false) {
       template = undefined;
       templateUrl = undefined;
+      if (children && children.length > 0) {
+        template = `<ui-view></ui-view>`
+      }
     }
 
     if (constructor.onEnter) {
@@ -52,11 +56,16 @@ export function State(opts) {
       }
     }
 
+    let controllerAs = name;
+    if (bindTo) {
+      controllerAs = bindTo;
+    }
+
     let state = {
       name:         name,
       template:     template,
       templateUrl:  templateUrl,
-      controllerAs: name,
+      controllerAs: controllerAs,
 
       children:     children.map(c => Object.create(c.$state, {})),
       resolve:      resolve,
