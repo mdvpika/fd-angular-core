@@ -12,7 +12,11 @@ lib: $(SRC_FILES)
 
 dist: lib $(LIB_FILES)
 	@mkdir -p dist
-	browserify lib/index.js -o dist/fd-angular-core.raw.js --standalone=FdAngularCore --extension=js --debug
+	browserify lib/index.js -o dist/fd-angular-core.raw.js --standalone=FdAngularCore --extension=js --debug \
+		--exclude jquery \
+		--exclude angular \
+		--exclude angular-ui-router \
+		--exclude angular-ui-router.statehelper 
 	cat dist/fd-angular-core.raw.js | exorcist dist/fd-angular-core.js.map > dist/fd-angular-core.js
 	rm dist/fd-angular-core.raw.js
 	@touch dist
