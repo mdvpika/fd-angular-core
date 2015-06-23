@@ -30,10 +30,10 @@
     "format": "es6",
     "main": "src/index.js",
     "dependencies": {
-      "angular": "1.x.x",
-      "angular-ui-router": "0.x.x",
-      "angular-ui-router.statehelper": "1.x.x",
-      "jquery": "jspm:jquery"
+      "angular": "jspm:angular@^1.4.0",
+      "angular-ui-router": "jspm:angular-ui-router@^0.2.15",
+      "angular-ui-router.statehelper": "npm:angular-ui-router.statehelper@^1.3.0",
+      "jquery": "jspm:jquery@^2.1.4"
     }
   }
 }
