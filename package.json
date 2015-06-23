@@ -5,7 +5,7 @@
   "repository": "https://github.com/fd/fd-angular-core.git",
   "main": "lib/index.js",
   "scripts": {
-    "test": "mocha test",
+    "test": "exho 'No tests...'",
     "build": "make"
   },
   "keywords": [
@@ -17,9 +17,7 @@
   "devDependencies": {
     "babel": "^5.4.7",
     "browserify": "^10.2.3",
-    "exorcist": "^0.4.0",
-    "mocha": "^2.2.5",
-    "unit.js": "^2.0.0"
+    "exorcist": "^0.4.0"
   },
   "dependencies": {
     "angular": "1.x.x",
