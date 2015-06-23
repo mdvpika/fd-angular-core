@@ -5,7 +5,7 @@
   "repository": "https://github.com/fd/fd-angular-core.git",
   "main": "lib/index.js",
   "scripts": {
-    "test": "exho 'No tests...'",
+    "test": "echo 'No tests...'",
     "build": "make"
   },
   "keywords": [
