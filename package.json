@@ -1,6 +1,6 @@
 {
   "name": "fd-angular-core",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Personal Angular utils",
   "repository": "https://github.com/fd/fd-angular-core.git",
   "main": "lib/index.js",
@@ -31,7 +31,7 @@
     "dependencies": {
       "angular": "1.x.x",
       "angular-ui-router": "0.x.x",
-      "angular-ui-router.statehelper": "npm:angular-ui-router.statehelper@1.x.x",
+      "angular-ui-router.statehelper": "npm:angular-ui-router.statehelper@^1.3.0",
       "jquery": "*"
     }
   }
