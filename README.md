@@ -18,6 +18,18 @@ class AppController {
     this.message = "Hello world!";
   }
 
+  activate() {
+    // can return a promise
+  }
+
+  attach() {
+
+  }
+
+  detach() {
+    
+  }
+
 }
 
 bootstrap(AppController); // => Promise

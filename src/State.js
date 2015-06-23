@@ -56,7 +56,6 @@ export function State(opts) {
       name:         name,
       template:     template,
       templateUrl:  templateUrl,
-      controller:   funcName(constructor),
       controllerAs: name,
 
       children:     children.map(c => Object.create(c.$state, {})),
@@ -64,6 +63,78 @@ export function State(opts) {
       url:          url,
       abstract:     abstract,
     };
+
+    state.controller = function(ctrl, $injector, $scope, $state) {
+      let current = $state.$current,
+          locals  = current && current.locals.globals;
+
+      try {
+        if (ctrl.attach) {
+          $injector.invoke(ctrl.attach, ctrl, locals);
+        }
+
+        if (ctrl.detach) {
+          $scope.$on('$destroy', function() {
+            $injector.invoke(ctrl.detach, ctrl, locals);
+          });
+        }
+      } catch(e) {
+        console.error(e);
+        throw e;
+      }
+
+      return ctrl;
+    };
+    state.controller.$inject = [name, '$injector', '$scope', '$state'];
+
+    let $constructorInject = (constructor.$inject || []);
+    state.resolve['$constructorInject'] = $constructorInject.concat(function() {
+      let locals = {};
+
+      for (let idx in $constructorInject) {
+        locals[$constructorInject[idx]] = arguments[idx];
+      }
+
+      return locals
+    });
+
+    let activate = constructor.prototype.activate
+    let $activateInject = ((activate && activate.$inject) || []);
+    state.resolve['$activateInject'] = $activateInject.concat(function() {
+      let locals = {};
+
+      for (let idx in $activateInject) {
+        locals[$activateInject[idx]] = arguments[idx];
+      }
+
+      return locals
+    });
+
+    state.resolve[name] = [
+      '$injector', '$q', '$controller', '$state', '$constructorInject', '$activateInject',
+      function($injector, $q, $controller, $state, $constructorInject, $activateInject) {
+        let ctrl;
+        let p;
+
+        try {
+          ctrl = $controller(funcName(constructor), $constructorInject);
+          p = $q.when(ctrl);
+        } catch(e) {
+          console.error(e);
+          return $q.reject(e);
+        }
+
+        if (ctrl.activate) {
+          try {
+            p = $q.when($injector.invoke(ctrl.activate, ctrl, $activateInject)).then(_ => ctrl);
+          } catch(e) {
+            console.error(e);
+            return $q.reject(e);
+          }
+        }
+
+        return p;
+      }];
 
     if (constructor.$$afterTransition) {
       State.registerOnEnter(constructor, ['$injector', '$q', '$state', function($injector, $q, $state) {
@@ -84,8 +155,6 @@ export function State(opts) {
             return $q.when(val);
           });
         }
-
-        $state.transition = p;
       }]);
     }
 
