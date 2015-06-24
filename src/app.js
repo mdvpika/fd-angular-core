@@ -20,22 +20,28 @@ export function includeModule(name) {
 }
 
 export var ng = angular;
+var beforeBootPromise = Promise.resolve(true);
+
+export function beforeBoot(p) {
+  beforeBootPromise = beforeBootPromise.then(x => Promise.resolve(p));
+}
 
 export function bootstrap(mainState, ...deps) {
-  appRootState = (mainState && mainState.$state) || undefined;
-
+  appRootState = (mainState && mainState.$$state && mainState.$$state.state) || undefined;
   for (let dep of deps) {
     includeModule(dep);
   }
 
-  return new Promise(function(resolve, reject){
-    $(() => {
-      try {
-        angular.bootstrap(document, ['app']);
-        resolve();
-      } catch(e) {
-        reject(e);
-      }
+  return beforeBootPromise.then(function() {
+    return new Promise(function(resolve, reject){
+      $(() => {
+        try {
+          angular.bootstrap(document, ['app']);
+          resolve();
+        } catch(e) {
+          reject(e);
+        }
+      });
     });
   });
 }

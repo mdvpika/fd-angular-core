@@ -5,7 +5,6 @@ export function dashCase(str) {
   });
 }
 
-
 export  function funcName(f) {
   let name = ((f && f.name) || null);
 
@@ -14,4 +13,11 @@ export  function funcName(f) {
   }
 
   return name;
+}
+
+export function superClass(constructor) {
+  if (!constructor)                     return Object;
+  if (!constructor.prototype)           return Object;
+  if (!constructor.prototype.__proto__) return Object;
+  return constructor.prototype.__proto__.constructor || Object;
 }

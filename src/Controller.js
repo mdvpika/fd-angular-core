@@ -1,20 +1,32 @@
 import {funcName} from './utils';
 import {app} from './app';
 
-export function Controller(name) {
+export function Controller(name, opts) {
   if (typeof name === 'function') {
-    var constructor = name; name = null;
-    return register(constructor);
+    let constructor = name; name = null;
+    return register(constructor, opts);
   }
+
   return register;
+  function register(constructor, opts){
+    let meta = registerLock(constructor);
 
-  function register(constructor){
-    if (constructor.$controller) {
-      return;
-    }
+    let className = funcName(constructor);
+    opts = (opts || {});
+    name = (name || opts.name || className);
 
-    constructor.$controller = true;
-    name = (name || funcName(constructor));
+    meta.name = name;
     app.controller(name, constructor);
   }
+}
+
+function registerLock(constructor) {
+  var lock = constructor.$$controller;
+
+  if (lock && (lock.constructor === constructor)) {
+    throw "@Controller() can only be used once!";
+  }
+
+  constructor.$$controller = { constructor };
+  return constructor.$$controller;
 }

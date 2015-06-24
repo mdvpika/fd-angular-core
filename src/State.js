@@ -1,4 +1,4 @@
-import {funcName, dashCase} from './utils';
+import {funcName, dashCase, superClass} from './utils';
 import {app} from './app';
 import {Controller} from './Controller';
 
@@ -11,82 +11,105 @@ export function State(opts) {
   }
 
   opts = (opts || {});
-  var {
-    url,
-    abstract,
-    children=[],
-    scope={},
-    resolve={},
-    template,
-    templateUrl,
-    bindTo
-  } = opts;
+
   return register;
 
   function register(constructor) {
-    Controller(constructor);
+    Controller(constructor, { name: opts.controllerName });
 
-    var name = funcName(constructor);
-    name = name[0].toLowerCase() + name.substr(1, name.length - DEFAULT_SUFFIX.length - 1);
+    let prototype = constructor.prototype;
 
-    if (!template && !templateUrl && (template !== false)) {
-      var tmplName = dashCase(name);
-      templateUrl = './components/'+tmplName+'/'+tmplName+'.html';
+    if (prototype.activate) {
+      State.onActivate(
+        prototype,
+        "activate",
+        { value: prototype.activate });
     }
 
-    if (template === false) {
-      template = undefined;
-      templateUrl = undefined;
-      if (children && children.length > 0) {
-        template = `<ui-view></ui-view>`
+    if (prototype.attach) {
+      State.onAttach(
+        prototype,
+        "attach",
+        { value: prototype.attach });
+    }
+
+    if (prototype.detach) {
+      State.onDetach(
+        prototype,
+        "detach",
+        { value: prototype.detach });
+    }
+
+    let callbacks = (prototype.$$stateCallbacks || {});
+    delete prototype['$$stateCallbacks'];
+
+    let meta = registerLock(constructor);
+    let superMeta = superClass(constructor).$$state;
+    superMeta = (superMeta || {});
+
+    {
+      let _opts = Object.create(superMeta.opts || {}, {});
+
+      let keys = Object.keys(opts);
+      for (let idx in keys) {
+        let key = keys[idx];
+        let val = opts[key];
+
+        // Ignored keys
+        if (key === 'name') continue;
+        if (key === 'controllerName') continue;
+        if (key === 'resolve') continue;
+        // if (key === '$onEnter') continue;
+        // if (key === '$onExit') continue;
+
+        _opts[key] = val;
       }
-    }
 
-    if (constructor.onEnter) {
-      State.registerOnEnter(constructor, constructor.onEnter);
-    }
-
-    if (constructor.onExit) {
-      State.registerOnExit(constructor, constructor.onExit);
-    }
-
-    if (constructor.$$resolvers) {
-      for (let name in constructor.$$resolvers) {
-        resolve[name] = constructor.$$resolvers[name];
+      { // Inherit resolve
+        let _resolve = Object.create((_opts.resolve || {}), {});
+        let keys = Object.keys(opts.resolve || {});
+        for (let idx in keys) {
+          let key = keys[idx];
+          _resolve[key] = opts.resolve[key];
+        }
+        _opts.resolve = _resolve;
       }
+
+      { // Inherit children
+        _opts.children = (opts.children || _opts.children || []).concat([]);
+      }
+
+      opts = _opts;
     }
 
-    let controllerAs = name;
-    if (bindTo) {
-      controllerAs = bindTo;
-    }
+    applyDefaultName(opts, constructor);
+    applyDefaultTemplate(opts);
 
-    let state = {
-      name:         name,
-      template:     template,
-      templateUrl:  templateUrl,
-      controllerAs: controllerAs,
+    meta.opts = opts;
+    meta.name = opts.name;
 
-      children:     children.map(c => Object.create(c.$state, {})),
-      resolve:      resolve,
-      url:          url,
-      abstract:     abstract,
+    let state = meta.state = {
+      name:          opts.name,
+      template:      opts.template,
+      templateUrl:   opts.templateUrl,
+      controllerAs:  (opts.bindTo || opts.name),
+      url:           opts.url,
+      abstract:      opts.abstract,
+      children:      opts.children.map(x => x.$$state.state),
+      resolve:       Object.create(opts.resolve, {})
     };
 
-    state.controller = function(ctrl, $injector, $scope, $state) {
-      let current = $state.$current,
-          locals  = current && current.locals.globals;
-
+    let controllerProvider = function controllerProvider(ctrl, $hooks, $scope) {
       try {
-        if (ctrl.attach) {
-          $injector.invoke(ctrl.attach, ctrl, locals);
+        if ($hooks.attach) {
+          for (let hook of $hooks.attach) { hook.call(ctrl); }
         }
 
-        if (ctrl.detach) {
-          $scope.$on('$destroy', function() {
-            $injector.invoke(ctrl.detach, ctrl, locals);
-          });
-        }
+        $scope.$on('$destroy', function() {
+          if ($hooks.detach) {
+            for (let hook of $hooks.detach) { hook.call(ctrl); }
+          }
+        });
       } catch(e) {
         console.error(e);
         throw e;
@@ -94,177 +117,277 @@ export function State(opts) {
 
       return ctrl;
     };
-    state.controller.$inject = [name, '$injector', '$scope', '$state'];
 
-    let $constructorInject = (constructor.$inject || []);
-    state.resolve['$constructorInject'] = $constructorInject.concat(function() {
-      let locals = {};
+    controllerProvider = controllerProvider
+      ::inject(opts.name, '$hooks', '$scope');
 
-      for (let idx in $constructorInject) {
-        locals[$constructorInject[idx]] = arguments[idx];
+    if (callbacks.onAttach) {
+      for (let hook of callbacks.onAttach) {
+        controllerProvider = controllerProvider::pushHook('attach', hook);
+      }
+    }
+    if (callbacks.onDetach) {
+      for (let hook of callbacks.onDetach) {
+        controllerProvider = controllerProvider::pushHook('detach', hook);
+      }
+    }
+
+    state.controller = controllerProvider;
+
+    let ctrlR = function($q, $controller, $constructorInject, $hooks) {
+      let ctrl;
+      let p;
+
+      try {
+        ctrl = $controller(constructor.$$controller.name, $constructorInject);
+        p = $q.when(ctrl);
+      } catch(e) {
+        console.error(e);
+        return $q.reject(e);
       }
 
-      return locals
-    });
-
-    let activate = constructor.prototype.activate
-    let $activateInject = ((activate && activate.$inject) || []);
-    state.resolve['$activateInject'] = $activateInject.concat(function() {
-      let locals = {};
-
-      for (let idx in $activateInject) {
-        locals[$activateInject[idx]] = arguments[idx];
+      if ($hooks.activate) {
+        for (let hook of $hooks.activate) {
+          p = p.then(x => hook.call(ctrl));
+        }
+        p = p.then(x => ctrl);
       }
 
-      return locals
-    });
+      return p;
+    };
 
-    state.resolve[name] = [
-      '$injector', '$q', '$controller', '$state', '$constructorInject', '$activateInject',
-      function($injector, $q, $controller, $state, $constructorInject, $activateInject) {
-        let ctrl;
-        let p;
+    ctrlR = ctrlR
+      ::inject('$q', '$controller', '$constructorInject', '$hooks')
+      ::namedInjectionCollector('$constructorInject', constructor.$inject);
 
-        try {
-          ctrl = $controller(funcName(constructor), $constructorInject);
-          p = $q.when(ctrl);
-        } catch(e) {
-          console.error(e);
-          return $q.reject(e);
-        }
-
-        if (ctrl.activate) {
-          try {
-            p = $q.when($injector.invoke(ctrl.activate, ctrl, $activateInject)).then(_ => ctrl);
-          } catch(e) {
-            console.error(e);
-            return $q.reject(e);
-          }
-        }
-
-        return p;
-      }];
-
-    if (constructor.$$afterTransition) {
-      State.registerOnEnter(constructor, ['$injector', '$q', '$state', function($injector, $q, $state) {
-        let p = $state.transition || $q.when(null);
-        let $scope = $state.$current.locals['@app'].$scope;
-        let ctrl = $scope[name];
-
-        for (let idx in constructor.$$afterTransition) {
-          let func = constructor.$$afterTransition[idx];
-
-          p = p.then(function() {
-            let val;
-            if (func.$$static) {
-              val = $injector.invoke(func);
-            } else {
-              val = $injector.invoke(func, ctrl);
-            }
-            return $q.when(val);
-          });
-        }
-      }]);
+    if (callbacks.onActivate) {
+      for (let hook of callbacks.onActivate) {
+        ctrlR = ctrlR::pushHook('activate', hook);
+      }
     }
 
-    if (constructor.$$onEnter) {
-      state.onEnter = ['$injector', '$q', function($injector, $q) {
-        let p = $q.when(null);
-
-        for (let idx in constructor.$$onEnter) {
-          let func = constructor.$$onEnter[idx];
-
-          p = p.then(function() {
-            let val = $injector.invoke(func);
-            return $q.when(val);
-          });
-        }
-
-        return p;
-      }];
-    }
-
-    if (constructor.$$onExit) {
-      state.onExit = ['$injector', '$q', function($injector, $q) {
-        let p = $q.when(null);
-
-        for (let idx in constructor.$$onExit) {
-          let func = constructor.$$onExit[idx];
-
-          p = p.then(function() {
-            let val = $injector.invoke(func);
-            return $q.when(val);
-          });
-        }
-
-        return p;
-      }];
-    }
-
-    constructor.$state = state;
+    state.resolve[opts.name] = ctrlR;
   }
 }
 
-State.resolveAs = function resolveAs(name) {
-  return function(target, funcName, desc) {
-    if (!target.$$resolvers) {
-      target.$$resolvers = {};
+State.onActivate = function onActivate(target, name, desc) {
+  if (typeof desc.value !== 'function') {
+    throw "@State.onActivate expects a function target";
+  }
+
+  if (!target.$$stateCallbacks) {
+    target.$$stateCallbacks = {};
+  }
+  if (!target.$$stateCallbacks.onActivate) {
+    target.$$stateCallbacks.onActivate = [];
+  }
+
+  target.$$stateCallbacks.onActivate.push(desc.value);
+};
+
+State.onAttach = function onAttach(target, name, desc) {
+  if (typeof desc.value !== 'function') {
+    throw "@State.onAttach expects a function target";
+  }
+
+  if (!target.$$stateCallbacks) {
+    target.$$stateCallbacks = {};
+  }
+  if (!target.$$stateCallbacks.onAttach) {
+    target.$$stateCallbacks.onAttach = [];
+  }
+
+  target.$$stateCallbacks.onAttach.push(desc.value);
+};
+
+State.onDetach = function onDetach(target, name, desc) {
+  if (typeof desc.value !== 'function') {
+    throw "@State.onDetach expects a function target";
+  }
+
+  if (!target.$$stateCallbacks) {
+    target.$$stateCallbacks = {};
+  }
+  if (!target.$$stateCallbacks.onDetach) {
+    target.$$stateCallbacks.onDetach = [];
+  }
+
+  target.$$stateCallbacks.onDetach.push(desc.value);
+};
+
+export function mountAt(url) {
+  let state = Object.create(this.$$state.state, {});
+  state.url = url;
+
+  let $$state = Object.create(this.$$state, {});
+  $$state.state = state;
+
+  let _this = Object.create(this, {});
+  _this.$$state = $$state;
+
+  return _this;
+}
+
+function registerLock(constructor) {
+  var lock = constructor.$$state;
+
+  if (lock && (lock.constructor === constructor)) {
+    throw "@State() can only be used once!";
+  }
+
+  constructor.$$state = { constructor };
+  return constructor.$$state;
+}
+
+function applyDefaultName(opts, constructor) {
+  if (opts.name) return;
+
+  let name = opts.name;
+  name = funcName(constructor);
+  name = name[0].toLowerCase() + name.substr(1, name.length - DEFAULT_SUFFIX.length - 1);
+  opts.name = name;
+}
+
+function applyDefaultTemplate(opts) {
+  let {template, templateUrl, children} = opts;
+
+  if (template !== undefined || templateUrl !== undefined) {
+    return;
+  }
+
+  if (children && children.length > 0) {
+    opts.template = `<ui-view></ui-view>`;
+  }
+}
+
+function inject(...splat) {
+  if (splat.length === 1 && !splat[0]) {
+    splat = [];
+  }
+  if (splat.length === 1 && splat[0].length > 0) {
+    splat = splat[0];
+  }
+
+  this.$inject = splat;
+  return this;
+}
+
+function injectionCollector(as, ...splat) {
+  if (splat.length === 1 && !splat[0]) {
+    splat = [];
+  }
+  if (splat.length === 1 && splat[0].length > 0) {
+    splat = splat[0];
+  }
+
+  let base      = this;
+  let inject    = (base.$inject || []).concat([]);
+  let injectLen = base.$inject.length;
+  let splatIdxs = []
+
+  let idx = inject.indexOf(as);
+  if (idx < 0) { return base; }
+
+  while (idx >= 0) {
+    splatIdxs.unshift(idx);
+    inject.splice(idx, 1);
+    injectLen--;
+    idx = inject.indexOf(as);
+  }
+
+  inject = inject.concat(splat);
+  collectInjections.$inject = inject;
+  return collectInjections;
+
+  function collectInjections() {
+    let inject = Array.prototype.slice.call(arguments, 0, injectLen);
+    let splat  = Array.prototype.slice.call(arguments, injectLen);
+
+    for (let idx in splatIdxs) {
+      inject.splice(splatIdxs[idx], 0, splat);
     }
-    if (typeof desc.value != 'function') {
-      throw Error("expected a function");
+
+    return base.apply(this, inject);
+  }
+}
+
+function namedInjectionCollector(as, ...splat) {
+  if (splat.length === 1 && !splat[0]) {
+    splat = [];
+  }
+  if (splat.length === 1 && splat[0].length > 0) {
+    splat = splat[0];
+  }
+
+  let base      = this;
+  let inject    = (base.$inject || []).concat([]);
+  let injectLen = base.$inject.length;
+  let splatIdxs = []
+
+  let idx = inject.indexOf(as);
+  if (idx < 0) { return base; }
+
+  while (idx >= 0) {
+    splatIdxs.unshift(idx);
+    inject.splice(idx, 1);
+    injectLen--;
+    idx = inject.indexOf(as);
+  }
+
+  inject = inject.concat(splat);
+  collectInjections.$inject = inject;
+  return collectInjections;
+
+  function collectInjections() {
+    let inject = Array.prototype.slice.call(arguments, 0, injectLen);
+    let splatVals = Array.prototype.slice.call(arguments, injectLen);
+
+    let namedSplat = {};
+
+    for (let idx in splat) {
+      namedSplat[splat[idx]] = splatVals[idx];
     }
-    target.$$resolvers[name] = desc.value;
-  };
-};
 
-State.onEnter = function onEnter(target, name, desc) {
-  if (typeof target !== 'function') {
-    throw Error("@State.onEnter can only be used with static methods.");
+    for (let idx in splatIdxs) {
+      inject.splice(splatIdxs[idx], 0, namedSplat);
+    }
+
+    return base.apply(this, inject);
   }
+}
 
-  State.registerOnEnter(target, desc.value);
-};
+app.constant('$hooks', { $fake: true });
+let nextHookId = 0;
+function pushHook(name, func) {
+  if (!func) return this;
 
-State.registerOnEnter = function registerOnEnter(target, func) {
-  if (!target.$$onEnter) {
-    target.$$onEnter = [];
+  let base = this;
+  nextHookId++;
+  let hookId = `_hook_${name}_${nextHookId}`;
+  let inject = (base.$inject || []);
+  let hooksIdx = inject.indexOf('$hooks');
+
+  binder.$inject = [hookId].concat(inject);
+  return binder::injectionCollector(hookId, func.$inject);
+
+  function binder(vars, ...rest) {
+    var hooks = rest[hooksIdx];
+    if (!hooks || hooks.$fake) {
+      hooks = {};
+      rest[hooksIdx] = hooks;
+    }
+
+    var chain = hooks[name];
+    if (!chain) {
+      chain = [];
+      hooks[name] = chain;
+    }
+
+    chain.push(hook);
+    return base.apply(this, rest);
+
+    function hook() {
+      return func.apply(this, vars);
+    }
   }
-
-  target.$$onEnter.push(func);
-};
-
-State.onExit = function onExit(target, name, desc) {
-  if (typeof target !== 'function') {
-    throw Error("@State.onExit can only be used with static methods.");
-  }
-
-  State.registerOnExit(target, desc.value);
-};
-
-State.registerOnExit = function registerOnExit(target, func) {
-  if (!target.$$onExit) {
-    target.$$onExit = [];
-  }
-
-  target.$$onExit.push(func);
-};
-
-State.afterTransition = function afterTransition(target, name, desc) {
-  let func = desc.value;
-
-  if (typeof target === 'function') {
-    func.$$static = true;
-  } else {
-    func.$$static = false;
-  }
-
-  State.registerAfterTransition(target, func);
-};
-
-State.registerAfterTransition = function registerAfterTransition(target, func) {
-  if (!target.$$afterTransition) {
-    target.$$afterTransition = [];
-  }
-
-  target.$$afterTransition.push(func);
-};
+}
