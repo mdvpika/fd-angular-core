@@ -59,24 +59,30 @@ export function State(opts) {
         if (key === 'name') continue;
         if (key === 'controllerName') continue;
         if (key === 'resolve') continue;
+        if (key === 'children') continue;
         // if (key === '$onEnter') continue;
         // if (key === '$onExit') continue;
 
         _opts[key] = val;
       }
 
+      { // inherit name
+        _opts.name = opts.name;
+      }
+
+      { // inherit controllerName
+        _opts.controllerName = opts.controllerName;
+      }
+
       { // Inherit resolve
-        let _resolve = Object.create((_opts.resolve || {}), {});
-        let keys = Object.keys(opts.resolve || {});
-        for (let idx in keys) {
-          let key = keys[idx];
-          _resolve[key] = opts.resolve[key];
-        }
+        let _resolve = {};
+        Object.assign(_resolve, _opts.resolve || {});
+        Object.assign(_resolve, opts.resolve || {});
         _opts.resolve = _resolve;
       }
 
       { // Inherit children
-        _opts.children = (opts.children || _opts.children || []).concat([]);
+        _opts.children = (opts.children || (_opts.children || []).concat([]));
       }
 
       opts = _opts;
@@ -95,8 +101,10 @@ export function State(opts) {
       controllerAs:  (opts.bindTo || opts.name),
       url:           opts.url,
       abstract:      opts.abstract,
-      children:      opts.children.map(x => x.$$state.state),
-      resolve:       Object.create(opts.resolve, {})
+      resolve:       Object.assign({}, opts.resolve),
+      childStates:   opts.children,
+
+      get children() { return this.childStates.map(x => x.$$state.state); }
     };
 
     let controllerProvider = function controllerProvider(ctrl, $hooks, $scope) {
