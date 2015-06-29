@@ -1,18 +1,18 @@
-import {funcName, dashCase} from './utils';
-import {app} from './app';
-import {Controller} from './Controller';
+import {funcName, dashCase} from "./utils";
+import {app} from "./app";
+import {Controller} from "./Controller";
 
-const DEFAULT_SUFFIX = 'Controller';
+const DEFAULT_SUFFIX = "Controller";
 
 export function Component(opts) {
-  if (typeof opts === 'function') {
-    var constructor = opts; opts = null;
+  if (typeof opts === "function") {
+    let constructor = opts; opts = null;
     return register(constructor);
   }
 
   opts = (opts || {});
   var {
-    restrict='EA',
+    restrict="EA",
     scope={},
     template,
     templateUrl
@@ -27,7 +27,7 @@ export function Component(opts) {
 
     if (!template && !templateUrl && (template !== false)) {
       var tmplName = dashCase(name);
-      templateUrl = './components/'+tmplName+'/'+tmplName+'.html';
+      templateUrl = `./components/${tmplName}/${tmplName}.html`;
     }
 
     if (template === false) {
@@ -37,14 +37,14 @@ export function Component(opts) {
 
     app.directive(name, function () {
       return {
-        restrict:         restrict,
-        scope:            scope,
+        restrict: restrict,
+        scope: scope,
         bindToController: true,
-        controller:       funcName(constructor),
-        controllerAs:     name,
-        template:         template,
-        templateUrl:      templateUrl
+        controller: funcName(constructor),
+        controllerAs: name,
+        template: template,
+        templateUrl: templateUrl
       };
     });
-  };
+  }
 }

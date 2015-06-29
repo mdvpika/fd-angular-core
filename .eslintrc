@@ -1,0 +1,7 @@
+{
+  "parser": "babel-eslint",
+  "rules": {
+    "strict": [2, "never"],
+    "new-cap": [2, { "capIsNew": false }]
+  }
+}

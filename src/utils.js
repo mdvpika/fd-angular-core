@@ -1,11 +1,11 @@
 
 export function dashCase(str) {
   return str.replace(/([A-Z])/g, function ($1) {
-    return '-' + $1.toLowerCase();
+    return "-" + $1.toLowerCase();
   });
 }
 
-export  function funcName(f) {
+export function funcName(f) {
   let name = ((f && f.name) || null);
 
   if (name === null) {
@@ -16,8 +16,8 @@ export  function funcName(f) {
 }
 
 export function superClass(constructor) {
-  if (!constructor)                     return Object;
-  if (!constructor.prototype)           return Object;
-  if (!constructor.prototype.__proto__) return Object;
-  return constructor.prototype.__proto__.constructor || Object;
+  if (!constructor) { return Object; }
+  if (!constructor.prototype) { return Object; }
+  if (!Object.getPrototypeOf(constructor.prototype)) { return Object; }
+  return Object.getPrototypeOf(constructor.prototype).constructor || Object;
 }

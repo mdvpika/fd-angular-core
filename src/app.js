@@ -1,15 +1,15 @@
-import $ from 'jquery';
-import angular from 'angular';
+import $ from "jquery";
+import angular from "angular";
 
 // Base modules
-import 'angular-ui-router';
-import 'angular-ui-router.statehelper';
+import "angular-ui-router";
+import "angular-ui-router.statehelper";
 
 let appRootState = null;
-let appDeps  = ['ui.router', 'ui.router.stateHelper'];
-export var app = angular.module('app', appDeps);
+let appDeps = ["ui.router", "ui.router.stateHelper"];
+export var app = angular.module("app", appDeps);
 
-app.config(['stateHelperProvider', function(stateHelperProvider) {
+app.config(["stateHelperProvider", function(stateHelperProvider) {
   if (appRootState) {
     stateHelperProvider.setNestedState(appRootState);
   }
@@ -23,7 +23,7 @@ export var ng = angular;
 var beforeBootPromise = Promise.resolve(true);
 
 export function beforeBoot(p) {
-  beforeBootPromise = beforeBootPromise.then(x => Promise.resolve(p));
+  beforeBootPromise = beforeBootPromise.then(() => Promise.resolve(p));
 }
 
 export function bootstrap(mainState, ...deps) {
@@ -36,7 +36,7 @@ export function bootstrap(mainState, ...deps) {
     return new Promise(function(resolve, reject){
       $(() => {
         try {
-          angular.bootstrap(document, ['app']);
+          angular.bootstrap(document, ["app"]);
           resolve();
         } catch(e) {
           reject(e);

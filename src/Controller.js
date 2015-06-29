@@ -1,10 +1,10 @@
-import {funcName} from './utils';
-import {app} from './app';
+import {funcName} from "./utils";
+import {app} from "./app";
 
-export function Controller(name, opts) {
-  if (typeof name === 'function') {
+export function Controller(name, options) {
+  if (typeof name === "function") {
     let constructor = name; name = null;
-    return register(constructor, opts);
+    return register(constructor, options);
   }
 
   return register;
