@@ -47,46 +47,42 @@ export function State(opts) {
     let superMeta = superClass(constructor).$$state;
     superMeta = (superMeta || {});
 
-    {
-      let $opts = Object.create(superMeta.opts || {}, {});
+    // start inheriting
+    let $opts = Object.create(superMeta.opts || {}, {});
 
-      let keys = Object.keys(opts);
-      for (let idx in keys) {
-        let key = keys[idx];
-        let val = opts[key];
+    let keys = Object.keys(opts);
+    for (let idx in keys) {
+      let key = keys[idx];
+      let val = opts[key];
 
-        // Ignored keys
-        if (key === "name") { continue; }
-        if (key === "controllerName") { continue; }
-        if (key === "resolve") { continue; }
-        if (key === "children") { continue; }
-        // if (key === "$onEnter") { continue; }
-        // if (key === "$onExit") { continue; }
+      // Ignored keys
+      if (key === "name") { continue; }
+      if (key === "controllerName") { continue; }
+      if (key === "resolve") { continue; }
+      if (key === "children") { continue; }
+      // if (key === "$onEnter") { continue; }
+      // if (key === "$onExit") { continue; }
 
-        $opts[key] = val;
-      }
-
-      { // inherit name
-        $opts.name = opts.name;
-      }
-
-      { // inherit controllerName
-        $opts.controllerName = opts.controllerName;
-      }
-
-      { // Inherit resolve
-        let $resolve = {};
-        Object.assign($resolve, $opts.resolve || {});
-        Object.assign($resolve, opts.resolve || {});
-        $opts.resolve = $resolve;
-      }
-
-      { // Inherit children
-        $opts.children = (opts.children || ($opts.children || []).concat([]));
-      }
-
-      opts = $opts;
+      $opts[key] = val;
     }
+
+    // inherit name
+    $opts.name = opts.name;
+
+    // inherit controllerName
+    $opts.controllerName = opts.controllerName;
+
+    // Inherit resolve
+    let $resolve = {};
+    Object.assign($resolve, $opts.resolve || {});
+    Object.assign($resolve, opts.resolve || {});
+    $opts.resolve = $resolve;
+
+    // Inherit children
+    $opts.children = (opts.children || ($opts.children || []).concat([]));
+
+    opts = $opts;
+    // done inheriting
 
     applyDefaultName(opts, constructor);
     applyDefaultTemplate(opts);
@@ -104,7 +100,7 @@ export function State(opts) {
       resolve: Object.assign({}, opts.resolve),
       childStates: opts.children,
 
-      get children() { return this.childStates.map(x => x.$$state.state); }
+      get children() { return this.childStates.map(x => x.$$state.state); },
     };
 
     let controllerProvider = function controllerProvider(ctrl, $hooks, $scope) {
@@ -223,9 +219,15 @@ State.onDetach = function onDetach(target, name, desc) {
   target.$$stateCallbacks.onDetach.push(desc.value);
 };
 
-export function mountAt(url) {
+export function mountAt(url, opts={}) {
+  let {name} = opts;
+
   let state = Object.create(this.$$state.state, {});
   state.url = url;
+
+  if (name) {
+    state.name = name;
+  }
 
   let $$state = Object.create(this.$$state, {});
   $$state.state = state;
@@ -347,7 +349,7 @@ function namedInjectionCollector(as, ...splat) {
   return collectInjections;
 
   function collectInjections() {
-    let inject = Array.prototype.slice.call(arguments, 0, injectLen);
+    let injectVals = Array.prototype.slice.call(arguments, 0, injectLen);
     let splatVals = Array.prototype.slice.call(arguments, injectLen);
 
     let namedSplat = {};
@@ -357,10 +359,10 @@ function namedInjectionCollector(as, ...splat) {
     }
 
     for (let splatIdx in splatIdxs) {
-      inject.splice(splatIdxs[splatIdx], 0, namedSplat);
+      injectVals.splice(splatIdxs[splatIdx], 0, namedSplat);
     }
 
-    return base.apply(this, inject);
+    return base.apply(this, injectVals);
   }
 }
 
@@ -372,10 +374,10 @@ function pushHook(name, func) {
   let base = this;
   nextHookId++;
   let hookId = `_hook_${name}_${nextHookId}`;
-  let inject = (base.$inject || []);
-  let hooksIdx = inject.indexOf("$hooks");
+  let $inject = (base.$inject || []);
+  let hooksIdx = $inject.indexOf("$hooks");
 
-  binder.$inject = [hookId].concat(inject);
+  binder.$inject = [hookId].concat($inject);
   return binder::injectionCollector(hookId, func.$inject);
 
   function binder(vars, ...rest) {

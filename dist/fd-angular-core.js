@@ -202,58 +202,50 @@ function State(opts) {
     var superMeta = (0, _utils.superClass)(constructor).$$state;
     superMeta = superMeta || {};
 
-    {
-      var $opts = Object.create(superMeta.opts || {}, {});
+    // start inheriting
+    var $opts = Object.create(superMeta.opts || {}, {});
 
-      var keys = Object.keys(opts);
-      for (var idx in keys) {
-        var key = keys[idx];
-        var val = opts[key];
+    var keys = Object.keys(opts);
+    for (var idx in keys) {
+      var key = keys[idx];
+      var val = opts[key];
 
-        // Ignored keys
-        if (key === "name") {
-          continue;
-        }
-        if (key === "controllerName") {
-          continue;
-        }
-        if (key === "resolve") {
-          continue;
-        }
-        if (key === "children") {
-          continue;
-        }
-        // if (key === "$onEnter") { continue; }
-        // if (key === "$onExit") { continue; }
-
-        $opts[key] = val;
+      // Ignored keys
+      if (key === "name") {
+        continue;
       }
-
-      {
-        // inherit name
-        $opts.name = opts.name;
+      if (key === "controllerName") {
+        continue;
       }
-
-      {
-        // inherit controllerName
-        $opts.controllerName = opts.controllerName;
+      if (key === "resolve") {
+        continue;
       }
-
-      {
-        // Inherit resolve
-        var $resolve = {};
-        Object.assign($resolve, $opts.resolve || {});
-        Object.assign($resolve, opts.resolve || {});
-        $opts.resolve = $resolve;
+      if (key === "children") {
+        continue;
       }
+      // if (key === "$onEnter") { continue; }
+      // if (key === "$onExit") { continue; }
 
-      {
-        // Inherit children
-        $opts.children = opts.children || ($opts.children || []).concat([]);
-      }
-
-      opts = $opts;
+      $opts[key] = val;
     }
+
+    // inherit name
+    $opts.name = opts.name;
+
+    // inherit controllerName
+    $opts.controllerName = opts.controllerName;
+
+    // Inherit resolve
+    var $resolve = {};
+    Object.assign($resolve, $opts.resolve || {});
+    Object.assign($resolve, opts.resolve || {});
+    $opts.resolve = $resolve;
+
+    // Inherit children
+    $opts.children = opts.children || ($opts.children || []).concat([]);
+
+    opts = $opts;
+    // done inheriting
 
     applyDefaultName(opts, constructor);
     applyDefaultTemplate(opts);
@@ -534,8 +526,15 @@ State.onDetach = function onDetach(target, name, desc) {
 };
 
 function mountAt(url) {
+  var opts = arguments[1] === undefined ? {} : arguments[1];
+  var name = opts.name;
+
   var state = Object.create(this.$$state.state, {});
   state.url = url;
+
+  if (name) {
+    state.name = name;
+  }
 
   var $$state = Object.create(this.$$state, {});
   $$state.state = state;
@@ -677,7 +676,7 @@ function namedInjectionCollector(as) {
   return collectInjections;
 
   function collectInjections() {
-    var inject = Array.prototype.slice.call(arguments, 0, injectLen);
+    var injectVals = Array.prototype.slice.call(arguments, 0, injectLen);
     var splatVals = Array.prototype.slice.call(arguments, injectLen);
 
     var namedSplat = {};
@@ -687,10 +686,10 @@ function namedInjectionCollector(as) {
     }
 
     for (var splatIdx in splatIdxs) {
-      inject.splice(splatIdxs[splatIdx], 0, namedSplat);
+      injectVals.splice(splatIdxs[splatIdx], 0, namedSplat);
     }
 
-    return base.apply(this, inject);
+    return base.apply(this, injectVals);
   }
 }
 
@@ -704,10 +703,10 @@ function pushHook(name, func) {
   var base = this;
   nextHookId++;
   var hookId = "_hook_" + name + "_" + nextHookId;
-  var inject = base.$inject || [];
-  var hooksIdx = inject.indexOf("$hooks");
+  var $inject = base.$inject || [];
+  var hooksIdx = $inject.indexOf("$hooks");
 
-  binder.$inject = [hookId].concat(inject);
+  binder.$inject = [hookId].concat($inject);
   return injectionCollector.call(binder, hookId, func.$inject);
 
   function binder(vars) {

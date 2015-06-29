@@ -43,7 +43,7 @@ export function Component(opts) {
         controller: funcName(constructor),
         controllerAs: name,
         template: template,
-        templateUrl: templateUrl
+        templateUrl: templateUrl,
       };
     });
   }

@@ -1,7 +1,15 @@
 {
+  "env": {
+    "browser": true
+  },
   "parser": "babel-eslint",
   "rules": {
     "strict": [2, "never"],
-    "new-cap": [2, { "capIsNew": false }]
+    "new-cap": [2, { "capIsNew": false }],
+    "comma-dangle": [2, "always-multiline"],
+    "no-else-return": 2,
+    "no-use-before-define": [2, "nofunc"],
+    "quotes": 0,
+    "indent": [2, 2]
   }
 }
