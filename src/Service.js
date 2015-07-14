@@ -1,4 +1,4 @@
-import {funcName} from "./utils";
+import {funcMeta} from "./utils";
 import {app} from "./app";
 
 export function Service(name) {
@@ -9,7 +9,23 @@ export function Service(name) {
   return register;
 
   function register(constructor){
-    name = (name || funcName(constructor));
+    registerLock(constructor);
+    let meta = funcMeta(constructor);
+
+    name = (name || meta.name);
+    meta.service.name = name;
+
     app.service(name, constructor);
   }
+}
+
+function registerLock(constructor) {
+  let meta = funcMeta(constructor);
+  var lock = meta.service;
+
+  if (lock) {
+    throw "@Service() can only be used once!";
+  }
+
+  meta.service = {};
 }

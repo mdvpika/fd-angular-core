@@ -1,4 +1,4 @@
-import {funcName} from "./utils";
+import {funcMeta} from "./utils";
 import {app} from "./app";
 
 export function Controller(name, options) {
@@ -9,24 +9,23 @@ export function Controller(name, options) {
 
   return register;
   function register(constructor, opts){
-    let meta = registerLock(constructor);
+    registerLock(constructor);
+    let meta = funcMeta(constructor);
 
-    let className = funcName(constructor);
-    opts = (opts || {});
-    name = (name || opts.name || className);
+    name = (name || (opts && opts.name) || meta.name);
+    meta.controller.name = name;
 
-    meta.name = name;
     app.controller(name, constructor);
   }
 }
 
 function registerLock(constructor) {
-  var lock = constructor.$$controller;
+  let meta = funcMeta(constructor);
+  var lock = meta.controller;
 
-  if (lock && (lock.constructor === constructor)) {
+  if (lock) {
     throw "@Controller() can only be used once!";
   }
 
-  constructor.$$controller = { constructor };
-  return constructor.$$controller;
+  meta.controller = {};
 }

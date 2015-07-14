@@ -1,4 +1,4 @@
-import {funcName, dashCase} from "./utils";
+import {funcMeta, dashCase} from "./utils";
 import {app} from "./app";
 import {Controller} from "./Controller";
 
@@ -15,14 +15,15 @@ export function Component(opts) {
     restrict="EA",
     scope={},
     template,
-    templateUrl
+    templateUrl,
   } = opts;
   return register;
 
   function register(constructor) {
     Controller(constructor);
+    let meta = funcMeta(constructor);
 
-    var name = funcName(constructor);
+    let name = meta.name;
     name = name[0].toLowerCase() + name.substr(1, name.length - DEFAULT_SUFFIX.length - 1);
 
     if (!template && !templateUrl && (template !== false)) {
@@ -37,13 +38,13 @@ export function Component(opts) {
 
     app.directive(name, function () {
       return {
-        restrict: restrict,
-        scope: scope,
+        restrict:         restrict,
+        scope:            scope,
         bindToController: true,
-        controller: funcName(constructor),
-        controllerAs: name,
-        template: template,
-        templateUrl: templateUrl,
+        controller:       meta.controller.name,
+        controllerAs:     name,
+        template:         template,
+        templateUrl:      templateUrl,
       };
     });
   }

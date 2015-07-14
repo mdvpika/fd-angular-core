@@ -4,3 +4,4 @@ export {Service} from "./Service";
 export {Controller} from "./Controller";
 export {Component} from "./Component";
 export {State, mountAt} from "./State";
+export {funcMeta as Metadata} from './utils';

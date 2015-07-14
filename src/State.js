@@ -1,9 +1,21 @@
-import {funcName, superClass} from "./utils";
-import {app} from "./app";
+import {funcMeta} from "./utils";
 import {Controller} from "./Controller";
 
 const DEFAULT_SUFFIX = "Controller";
 
+
+
+/*
+@param {Object}  opts - The options
+@param {string}  [opts.name] - The name of the state.
+@param {string}  [opts.bindTo] - Bind the controller to the provided name.
+@param {string}  [opts.url] - The url of the state.
+@param {Boolean} [opts.abstract] - True for abstract states.
+@param {string}  [opts.template] - An angular template.
+@param {string}  [opts.templateUrl] - A URL to an angular template.
+@param {State[]} [opts.children] - List of child states.
+@param {string}  [opts.controllerName] - The name of the controller as seen by angular.
+*/
 export function State(opts) {
   if (typeof opts === "function") {
     let constructor = opts; opts = null;
@@ -15,163 +27,135 @@ export function State(opts) {
   return register;
 
   function register(constructor) {
+    registerLock(constructor);
     Controller(constructor, { name: opts.controllerName });
 
+    let meta = stateMeta(constructor);
+    let superMeta = stateMeta(meta.superClass) || { state: {} };
+
     let prototype = constructor.prototype;
-
     if (prototype.activate) {
-      State.onActivate(
-        prototype,
-        "activate",
-        { value: prototype.activate });
+      State.onActivate(prototype, "activate", { value: prototype.activate });
     }
-
     if (prototype.attach) {
-      State.onAttach(
-        prototype,
-        "attach",
-        { value: prototype.attach });
+      State.onAttach(prototype, "attach", { value: prototype.attach });
     }
-
     if (prototype.detach) {
-      State.onDetach(
-        prototype,
-        "detach",
-        { value: prototype.detach });
+      State.onDetach(prototype, "detach", { value: prototype.detach });
     }
 
-    let callbacks = (prototype.$$stateCallbacks || {});
-    delete prototype.$$stateCallbacks;
-
-    let meta = registerLock(constructor);
-    let superMeta = superClass(constructor).$$state;
-    superMeta = (superMeta || {});
-
-    // start inheriting
-    let $opts = Object.create(superMeta.opts || {}, {});
-
-    let keys = Object.keys(opts);
-    for (let idx in keys) {
-      let key = keys[idx];
-      let val = opts[key];
-
-      // Ignored keys
-      if (key === "name") { continue; }
-      if (key === "controllerName") { continue; }
-      if (key === "resolve") { continue; }
-      if (key === "children") { continue; }
-      // if (key === "$onEnter") { continue; }
-      // if (key === "$onExit") { continue; }
-
-      $opts[key] = val;
+    if (superMeta.state.callbacks) {
+      meta.state.callbacks.onActivate = superMeta.state.callbacks.onActivate
+        .concat(meta.state.callbacks.onActivate);
+      meta.state.callbacks.onAttach = superMeta.state.callbacks.onAttach
+        .concat(meta.state.callbacks.onAttach);
+      meta.state.callbacks.onDetach = superMeta.state.callbacks.onDetach
+        .concat(meta.state.callbacks.onDetach);
     }
 
-    // inherit name
-    $opts.name = opts.name;
-
-    // inherit controllerName
-    $opts.controllerName = opts.controllerName;
-
-    // Inherit resolve
-    let $resolve = {};
-    Object.assign($resolve, $opts.resolve || {});
-    Object.assign($resolve, opts.resolve || {});
-    $opts.resolve = $resolve;
-
-    // Inherit children
-    $opts.children = (opts.children || ($opts.children || []).concat([]));
-
-    opts = $opts;
-    // done inheriting
-
-    applyDefaultName(opts, constructor);
-    applyDefaultTemplate(opts);
-
-    meta.opts = opts;
-    meta.name = opts.name;
-
-    let state = meta.state = {
-      name: opts.name,
-      template: opts.template,
-      templateUrl: opts.templateUrl,
-      controllerAs: (opts.bindTo || opts.name),
-      url: opts.url,
-      abstract: opts.abstract,
-      resolve: Object.assign({}, opts.resolve),
-      childStates: opts.children,
-
-      get children() { return this.childStates.map(x => x.$$state.state); },
-    };
-
-    let controllerProvider = function controllerProvider(ctrl, $hooks, $scope) {
-      try {
-        if ($hooks.attach) {
-          for (let hook of $hooks.attach) { hook.call(ctrl); }
-        }
-
-        $scope.$on("$destroy", function() {
-          if ($hooks.detach) {
-            for (let hook of $hooks.detach) { hook.call(ctrl); }
-          }
-        });
-      } catch(e) {
-        console.error(e);
-        throw e;
-      }
-
-      return ctrl;
-    };
-
-    controllerProvider = controllerProvider
-      ::inject(opts.name, "$hooks", "$scope");
-
-    if (callbacks.onAttach) {
-      for (let hook of callbacks.onAttach) {
-        controllerProvider = controllerProvider::pushHook("attach", hook);
-      }
+    if (opts.children === false) {
+      meta.state.children = null;
+    } else if (opts.children) {
+      meta.state.children = opts.children;
+    } else if (superMeta.state.children) {
+      meta.state.children = superMeta.state.children;
     }
-    if (callbacks.onDetach) {
-      for (let hook of callbacks.onDetach) {
-        controllerProvider = controllerProvider::pushHook("detach", hook);
+    if (!meta.state.children) {
+      meta.state.children = [];
+    }
+
+    let inheritedTemplated = false;
+    if (opts.template === false) {
+      meta.state.template = null;
+    } else if (opts.template) {
+      meta.state.template = opts.template;
+    } else if (opts.templateUrl) {
+      meta.state.templateUrl = opts.templateUrl;
+    } else if (superMeta.state.template) {
+      inheritedTemplated = true;
+      meta.state.template = superMeta.state.template;
+    } else if (superMeta.state.templateUrl) {
+      inheritedTemplated = true;
+      meta.state.templateUrl = superMeta.state.templateUrl;
+    }
+    if (!meta.state.template && !meta.state.templateUrl) {
+      if (meta.state.children.length > 0) {
+        meta.state.template = `<ui-view></ui-view>`;
+      } else {
+        meta.state.template = ``;
       }
     }
 
-    state.controller = controllerProvider;
+    if (opts.name) {
+      meta.state.name = opts.name;
+    } else {
+      let name = meta.name;
+      name = name[0].toLowerCase() + name.substr(1, name.length - DEFAULT_SUFFIX.length - 1);
+      meta.state.name = name;
+    }
 
-    let ctrlR = function($q, $controller, $constructorInject, $hooks) {
-      let ctrl;
-      let p;
-
-      try {
-        ctrl = $controller(constructor.$$controller.name, $constructorInject);
-        p = $q.when(ctrl);
-      } catch(e) {
-        console.error(e);
-        return $q.reject(e);
+    if (opts.bindTo) {
+      if (inheritedTemplated) {
+        throw Error("bindTo cannot be used with inherited templates");
       }
-
-      if ($hooks.activate) {
-        for (let hook of $hooks.activate) {
-          p = p.then(() => hook.call(ctrl));
-        }
-        p = p.then(() => ctrl);
-      }
-
-      return p;
-    };
-
-    ctrlR = ctrlR
-      ::inject("$q", "$controller", "$constructorInject", "$hooks")
-      ::namedInjectionCollector("$constructorInject", constructor.$inject);
-
-    if (callbacks.onActivate) {
-      for (let hook of callbacks.onActivate) {
-        ctrlR = ctrlR::pushHook("activate", hook);
+      meta.state.bindTo = opts.bindTo;
+    } else {
+      if (inheritedTemplated) {
+        meta.state.bindTo = superMeta.state.bindTo;
+      } else {
+        meta.state.bindTo = meta.state.name;
       }
     }
 
-    state.resolve[opts.name] = ctrlR;
+    if (opts.url === false) {
+      if (opts.url) {
+        meta.state.url = opts.url;
+      } else if (superMeta.state.url) {
+        meta.state.url = superMeta.state.url;
+      }
+    }
+
+    if (opts.abstract === undefined) {
+      meta.state.abstract = superMeta.state.abstract;
+    } else if (opts.abstract === true) {
+      meta.state.abstract = true;
+    } else if (opts.abstract === false) {
+      meta.state.abstract = false;
+    }
+
   }
+}
+
+function stateMeta(constructor) {
+  if (!constructor) {
+    return null;
+  }
+
+  let meta = funcMeta(constructor);
+
+  if (meta.state) {
+    return meta;
+  }
+
+  meta.state = {
+    callbacks: {
+      onActivate: [],
+      onAttach:   [],
+      onDetach:   [],
+    },
+  };
+
+  return meta;
+}
+
+function registerLock(constructor) {
+  let meta = stateMeta(constructor);
+
+  if (meta.state.registered) {
+    throw "@State() can only be used once!";
+  }
+
+  meta.state.registered = true;
 }
 
 State.onActivate = function onActivate(target, name, desc) {
@@ -179,14 +163,8 @@ State.onActivate = function onActivate(target, name, desc) {
     throw "@State.onActivate expects a function target";
   }
 
-  if (!target.$$stateCallbacks) {
-    target.$$stateCallbacks = {};
-  }
-  if (!target.$$stateCallbacks.onActivate) {
-    target.$$stateCallbacks.onActivate = [];
-  }
-
-  target.$$stateCallbacks.onActivate.push(desc.value);
+  let meta = stateMeta(target.constructor);
+  meta.state.callbacks.onActivate.push(desc.value);
 };
 
 State.onAttach = function onAttach(target, name, desc) {
@@ -194,14 +172,8 @@ State.onAttach = function onAttach(target, name, desc) {
     throw "@State.onAttach expects a function target";
   }
 
-  if (!target.$$stateCallbacks) {
-    target.$$stateCallbacks = {};
-  }
-  if (!target.$$stateCallbacks.onAttach) {
-    target.$$stateCallbacks.onAttach = [];
-  }
-
-  target.$$stateCallbacks.onAttach.push(desc.value);
+  let meta = stateMeta(target.constructor);
+  meta.state.callbacks.onAttach.push(desc.value);
 };
 
 State.onDetach = function onDetach(target, name, desc) {
@@ -209,195 +181,97 @@ State.onDetach = function onDetach(target, name, desc) {
     throw "@State.onDetach expects a function target";
   }
 
-  if (!target.$$stateCallbacks) {
-    target.$$stateCallbacks = {};
-  }
-  if (!target.$$stateCallbacks.onDetach) {
-    target.$$stateCallbacks.onDetach = [];
-  }
-
-  target.$$stateCallbacks.onDetach.push(desc.value);
+  let meta = stateMeta(target.constructor);
+  meta.state.callbacks.onDetach.push(desc.value);
 };
 
 export function mountAt(url, opts={}) {
   let {name} = opts;
 
-  let state = Object.create(this.$$state.state, {});
-  state.url = url;
+  return {
+    state:              this,
+    url:                url,
+    name:               name,
+    buildUiRouterState: builder,
+  };
 
-  if (name) {
-    state.name = name;
-  }
+  function builder() {
+    let state = buildUiRouterState(this.state);
 
-  let $$state = Object.create(this.$$state, {});
-  $$state.state = state;
-
-  let $this = Object.create(this, {});
-  $this.$$state = $$state;
-
-  return $this;
-}
-
-function registerLock(constructor) {
-  var lock = constructor.$$state;
-
-  if (lock && (lock.constructor === constructor)) {
-    throw "@State() can only be used once!";
-  }
-
-  constructor.$$state = { constructor };
-  return constructor.$$state;
-}
-
-function applyDefaultName(opts, constructor) {
-  if (opts.name) { return; }
-
-  let name = opts.name;
-  name = funcName(constructor);
-  name = name[0].toLowerCase() + name.substr(1, name.length - DEFAULT_SUFFIX.length - 1);
-  opts.name = name;
-}
-
-function applyDefaultTemplate(opts) {
-  let {template, templateUrl, children} = opts;
-
-  if (template !== undefined || templateUrl !== undefined) {
-    return;
-  }
-
-  if (children && children.length > 0) {
-    opts.template = `<ui-view></ui-view>`;
-  }
-}
-
-function inject(...splat) {
-  if (splat.length === 1 && !splat[0]) {
-    splat = [];
-  }
-  if (splat.length === 1 && splat[0].length > 0) {
-    splat = splat[0];
-  }
-
-  this.$inject = splat;
-  return this;
-}
-
-function injectionCollector(as, ...splat) {
-  if (splat.length === 1 && !splat[0]) {
-    splat = [];
-  }
-  if (splat.length === 1 && splat[0].length > 0) {
-    splat = splat[0];
-  }
-
-  let base = this;
-  let $inject = (base.$inject || []).concat([]);
-  let injectLen = base.$inject.length;
-  let splatIdxs = [];
-
-  let idx = $inject.indexOf(as);
-  if (idx < 0) { return base; }
-
-  while (idx >= 0) {
-    splatIdxs.unshift(idx);
-    $inject.splice(idx, 1);
-    injectLen--;
-    idx = $inject.indexOf(as);
-  }
-
-  $inject = $inject.concat(splat);
-  collectInjections.$inject = $inject;
-  return collectInjections;
-
-  function collectInjections() {
-    let injectVals = Array.prototype.slice.call(arguments, 0, injectLen);
-    let splatVals = Array.prototype.slice.call(arguments, injectLen);
-
-    for (let splatIdx in splatIdxs) {
-      injectVals.splice(splatIdxs[splatIdx], 0, splatVals);
+    if (this.url) {
+      state.url = url;
     }
 
-    return base.apply(this, injectVals);
+    if (this.name) {
+      state.name = name;
+    }
+
+    return state;
   }
 }
 
-function namedInjectionCollector(as, ...splat) {
-  if (splat.length === 1 && !splat[0]) {
-    splat = [];
-  }
-  if (splat.length === 1 && splat[0].length > 0) {
-    splat = splat[0];
+export function buildUiRouterState(obj) {
+  console.log("buildUiRouterState: %o", obj);
+  if (!obj) {
+    return null;
   }
 
-  let base = this;
-  let $inject = (base.$inject || []).concat([]);
-  let injectLen = base.$inject.length;
-  let splatIdxs = [];
-
-  let idx = $inject.indexOf(as);
-  if (idx < 0) { return base; }
-
-  while (idx >= 0) {
-    splatIdxs.unshift(idx);
-    $inject.splice(idx, 1);
-    injectLen--;
-    idx = $inject.indexOf(as);
+  if (obj.buildUiRouterState) {
+    let state = obj.buildUiRouterState();
+    console.log("State: => %o", state);
+    return state;
   }
 
-  $inject = $inject.concat(splat);
-  collectInjections.$inject = $inject;
-  return collectInjections;
-
-  function collectInjections() {
-    let injectVals = Array.prototype.slice.call(arguments, 0, injectLen);
-    let splatVals = Array.prototype.slice.call(arguments, injectLen);
-
-    let namedSplat = {};
-
-    for (let nameIdx in splat) {
-      namedSplat[splat[nameIdx]] = splatVals[nameIdx];
-    }
-
-    for (let splatIdx in splatIdxs) {
-      injectVals.splice(splatIdxs[splatIdx], 0, namedSplat);
-    }
-
-    return base.apply(this, injectVals);
+  let meta = funcMeta(obj);
+  if (!meta.state) {
+    throw Error("provided object is not a state");
   }
-}
 
-app.constant("$hooks", { $fake: true });
-let nextHookId = 0;
-function pushHook(name, func) {
-  if (!func) { return this; }
+  let children = [];
+  for (let child of meta.state.children) {
+    children.push(buildUiRouterState(child));
+  }
 
-  let base = this;
-  nextHookId++;
-  let hookId = `_hook_${name}_${nextHookId}`;
-  let $inject = (base.$inject || []);
-  let hooksIdx = $inject.indexOf("$hooks");
+  let state = {
+    name:         meta.state.name,
+    template:     meta.state.template,
+    templateUrl:  meta.state.templateUrl,
+    controllerAs: meta.state.bindTo,
+    url:          meta.state.url,
+    abstract:     meta.state.abstract,
+    children:     children,
+    controller:   [meta.state.name, '$locals', '$injector', '$scope', controllerAttacher],
+    resolve:      {
+      [meta.state.name]: ['$q', '$controller', '$locals', '$injector', controllerProvider],
+    },
+  };
 
-  binder.$inject = [hookId].concat($inject);
-  return binder::injectionCollector(hookId, func.$inject);
+  console.log("State: => %o", state);
+  return state;
 
-  function binder(vars, ...rest) {
-    var hooks = rest[hooksIdx];
-    if (!hooks || hooks.$fake) {
-      hooks = {};
-      rest[hooksIdx] = hooks;
+  function controllerAttacher(ctrl, $locals, $injector, $scope) {
+    for (let clb of meta.callbacks.onAttach) {
+      $injector.invoke(clb, ctrl, $locals);
     }
 
-    var chain = hooks[name];
-    if (!chain) {
-      chain = [];
-      hooks[name] = chain;
+    $scope.$on("$destroy", function() {
+      for (let clb of meta.callbacks.onDetach) {
+        $injector.invoke(clb, ctrl, $locals);
+      }
+    });
+
+    return ctrl;
+  }
+
+  function controllerProvider($q, $controller, $locals, $injector) {
+    let ctrl = $controller(meta.controller.name, $locals);
+    let p = $q.when(ctrl);
+
+    for (let clb of meta.callbacks.onActivate) {
+      p = p.then(() => $injector.invoke(clb, ctrl, $locals));
     }
 
-    chain.push(hook);
-    return base.apply(this, rest);
-
-    function hook() {
-      return func.apply(this, vars);
-    }
+    p = p.then(() => ctrl);
+    return p;
   }
 }

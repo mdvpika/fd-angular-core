@@ -32,8 +32,9 @@ function Component(opts) {
 
   function register(constructor) {
     (0, _Controller.Controller)(constructor);
+    var meta = (0, _utils.funcMeta)(constructor);
 
-    var name = (0, _utils.funcName)(constructor);
+    var name = meta.name;
     name = name[0].toLowerCase() + name.substr(1, name.length - DEFAULT_SUFFIX.length - 1);
 
     if (!template && !templateUrl && template !== false) {
@@ -51,7 +52,7 @@ function Component(opts) {
         restrict: restrict,
         scope: scope,
         bindToController: true,
-        controller: (0, _utils.funcName)(constructor),
+        controller: meta.controller.name,
         controllerAs: name,
         template: template,
         templateUrl: templateUrl
@@ -80,98 +81,52 @@ function Controller(name, options) {
 
   return register;
   function register(constructor, opts) {
-    var meta = registerLock(constructor);
+    registerLock(constructor);
+    var meta = (0, _utils.funcMeta)(constructor);
 
-    var className = (0, _utils.funcName)(constructor);
-    opts = opts || {};
-    name = name || opts.name || className;
+    name = name || opts && opts.name || meta.name;
+    meta.controller.name = name;
 
-    meta.name = name;
     _app.app.controller(name, constructor);
   }
 }
 
 function registerLock(constructor) {
-  var lock = constructor.$$controller;
+  var meta = (0, _utils.funcMeta)(constructor);
+  var lock = meta.controller;
 
-  if (lock && lock.constructor === constructor) {
+  if (lock) {
     throw "@Controller() can only be used once!";
   }
 
-  constructor.$$controller = { constructor: constructor };
-  return constructor.$$controller;
+  meta.controller = {};
 }
 
 },{"./app":6,"./utils":8}],3:[function(require,module,exports){
-'use strict';
+"use strict";
 
-Object.defineProperty(exports, '__esModule', {
+Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.Inject = Inject;
-
-var _app = require('./app');
 
 function Inject() {
   for (var _len = arguments.length, deps = Array(_len), _key = 0; _key < _len; _key++) {
     deps[_key] = arguments[_key];
   }
 
-  return function (constructor, name, desc) {
-    if (desc && typeof desc.value === 'function') {
+  return function (target, name, desc) {
+    var isMethod = desc && typeof desc.value === "function";
+
+    if (isMethod) {
       desc.value.$inject = deps;
     } else {
-      constructor.$inject = deps;
+      target.$inject = deps;
     }
   };
 }
 
-_app.app.run(['$injector', function $superProvider($injector) {
-
-  $injector.superConstruct = function superConstruct(target, locals) {
-    return this.superCall(target, 'constructor', locals);
-  };
-
-  $injector.superCall = function superCall(target, method, locals) {
-    var func = get(Object.getPrototypeOf(B.prototype), method, this);
-    return this.invoke(func, target, locals);
-  };
-
-  function get(_x, _x2, _x3) {
-    var _again = true;
-    _function: while (_again) {
-      var object = _x,
-          property = _x2,
-          receiver = _x3;
-      desc = parent = getter = undefined;
-      _again = false;
-      if (object === null) object = Function.prototype;
-      var desc = Object.getOwnPropertyDescriptor(object, property);
-      if (desc === undefined) {
-        var parent = Object.getPrototypeOf(object);
-        if (parent === null) {
-          return undefined;
-        } else {
-          _x = parent;
-          _x2 = property;
-          _x3 = receiver;
-          _again = true;
-          continue _function;
-        }
-      } else if ('value' in desc) {
-        return desc.value;
-      } else {
-        var getter = desc.get;
-        if (getter === undefined) {
-          return undefined;
-        }
-        return getter.call(receiver);
-      }
-    }
-  }
-}]);
-
-},{"./app":6}],4:[function(require,module,exports){
+},{}],4:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -191,9 +146,25 @@ function Service(name) {
   return register;
 
   function register(constructor) {
-    name = name || (0, _utils.funcName)(constructor);
+    registerLock(constructor);
+    var meta = (0, _utils.funcMeta)(constructor);
+
+    name = name || meta.name;
+    meta.service.name = name;
+
     _app.app.service(name, constructor);
   }
+}
+
+function registerLock(constructor) {
+  var meta = (0, _utils.funcMeta)(constructor);
+  var lock = meta.service;
+
+  if (lock) {
+    throw "@Service() can only be used once!";
+  }
+
+  meta.service = {};
 }
 
 },{"./app":6,"./utils":8}],5:[function(require,module,exports){
@@ -204,14 +175,27 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.State = State;
 exports.mountAt = mountAt;
+exports.buildUiRouterState = buildUiRouterState;
+
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
 var _utils = require("./utils");
-
-var _app = require("./app");
 
 var _Controller = require("./Controller");
 
 var DEFAULT_SUFFIX = "Controller";
+
+/*
+@param {Object}  opts - The options
+@param {string}  [opts.name] - The name of the state.
+@param {string}  [opts.bindTo] - Bind the controller to the provided name.
+@param {string}  [opts.url] - The url of the state.
+@param {Boolean} [opts.abstract] - True for abstract states.
+@param {string}  [opts.template] - An angular template.
+@param {string}  [opts.templateUrl] - A URL to an angular template.
+@param {State[]} [opts.children] - List of child states.
+@param {string}  [opts.controllerName] - The name of the controller as seen by angular.
+*/
 
 function State(opts) {
   if (typeof opts === "function") {
@@ -224,179 +208,280 @@ function State(opts) {
   return register;
 
   function register(constructor) {
-    var _context;
-
+    registerLock(constructor);
     (0, _Controller.Controller)(constructor, { name: opts.controllerName });
 
-    var prototype = constructor.prototype;
+    var meta = stateMeta(constructor);
+    var superMeta = stateMeta(meta.superClass) || { state: {} };
 
+    var prototype = constructor.prototype;
     if (prototype.activate) {
       State.onActivate(prototype, "activate", { value: prototype.activate });
     }
-
     if (prototype.attach) {
       State.onAttach(prototype, "attach", { value: prototype.attach });
     }
-
     if (prototype.detach) {
       State.onDetach(prototype, "detach", { value: prototype.detach });
     }
 
-    var callbacks = prototype.$$stateCallbacks || {};
-    delete prototype.$$stateCallbacks;
-
-    var meta = registerLock(constructor);
-    var superMeta = (0, _utils.superClass)(constructor).$$state;
-    superMeta = superMeta || {};
-
-    // start inheriting
-    var $opts = Object.create(superMeta.opts || {}, {});
-
-    var keys = Object.keys(opts);
-    for (var idx in keys) {
-      var key = keys[idx];
-      var val = opts[key];
-
-      // Ignored keys
-      if (key === "name") {
-        continue;
-      }
-      if (key === "controllerName") {
-        continue;
-      }
-      if (key === "resolve") {
-        continue;
-      }
-      if (key === "children") {
-        continue;
-      }
-      // if (key === "$onEnter") { continue; }
-      // if (key === "$onExit") { continue; }
-
-      $opts[key] = val;
+    if (superMeta.state.callbacks) {
+      meta.state.callbacks.onActivate = superMeta.state.callbacks.onActivate.concat(meta.state.callbacks.onActivate);
+      meta.state.callbacks.onAttach = superMeta.state.callbacks.onAttach.concat(meta.state.callbacks.onAttach);
+      meta.state.callbacks.onDetach = superMeta.state.callbacks.onDetach.concat(meta.state.callbacks.onDetach);
     }
 
-    // inherit name
-    $opts.name = opts.name;
+    if (opts.children === false) {
+      meta.state.children = null;
+    } else if (opts.children) {
+      meta.state.children = opts.children;
+    } else if (superMeta.state.children) {
+      meta.state.children = superMeta.state.children;
+    }
+    if (!meta.state.children) {
+      meta.state.children = [];
+    }
 
-    // inherit controllerName
-    $opts.controllerName = opts.controllerName;
-
-    // Inherit resolve
-    var $resolve = {};
-    Object.assign($resolve, $opts.resolve || {});
-    Object.assign($resolve, opts.resolve || {});
-    $opts.resolve = $resolve;
-
-    // Inherit children
-    $opts.children = opts.children || ($opts.children || []).concat([]);
-
-    opts = $opts;
-    // done inheriting
-
-    applyDefaultName(opts, constructor);
-    applyDefaultTemplate(opts);
-
-    meta.opts = opts;
-    meta.name = opts.name;
-
-    var state = meta.state = Object.defineProperties({
-      name: opts.name,
-      template: opts.template,
-      templateUrl: opts.templateUrl,
-      controllerAs: opts.bindTo || opts.name,
-      url: opts.url,
-      abstract: opts.abstract,
-      resolve: Object.assign({}, opts.resolve),
-      childStates: opts.children
-
-    }, {
-      children: {
-        get: function get() {
-          return this.childStates.map(function (x) {
-            return x.$$state.state;
-          });
-        },
-        configurable: true,
-        enumerable: true
+    var inheritedTemplated = false;
+    if (opts.template === false) {
+      meta.state.template = null;
+    } else if (opts.template) {
+      meta.state.template = opts.template;
+    } else if (opts.templateUrl) {
+      meta.state.templateUrl = opts.templateUrl;
+    } else if (superMeta.state.template) {
+      inheritedTemplated = true;
+      meta.state.template = superMeta.state.template;
+    } else if (superMeta.state.templateUrl) {
+      inheritedTemplated = true;
+      meta.state.templateUrl = superMeta.state.templateUrl;
+    }
+    if (!meta.state.template && !meta.state.templateUrl) {
+      if (meta.state.children.length > 0) {
+        meta.state.template = "<ui-view></ui-view>";
+      } else {
+        meta.state.template = "";
       }
-    });
+    }
 
-    var controllerProvider = function controllerProvider(ctrl, $hooks, $scope) {
+    if (opts.name) {
+      meta.state.name = opts.name;
+    } else {
+      var _name = meta.name;
+      _name = _name[0].toLowerCase() + _name.substr(1, _name.length - DEFAULT_SUFFIX.length - 1);
+      meta.state.name = _name;
+    }
+
+    if (opts.bindTo) {
+      if (inheritedTemplated) {
+        throw Error("bindTo cannot be used with inherited templates");
+      }
+      meta.state.bindTo = opts.bindTo;
+    } else {
+      if (inheritedTemplated) {
+        meta.state.bindTo = superMeta.state.bindTo;
+      } else {
+        meta.state.bindTo = meta.state.name;
+      }
+    }
+
+    if (opts.url === false) {
+      if (opts.url) {
+        meta.state.url = opts.url;
+      } else if (superMeta.state.url) {
+        meta.state.url = superMeta.state.url;
+      }
+    }
+
+    if (opts.abstract === undefined) {
+      meta.state.abstract = superMeta.state.abstract;
+    } else if (opts.abstract === true) {
+      meta.state.abstract = true;
+    } else if (opts.abstract === false) {
+      meta.state.abstract = false;
+    }
+  }
+}
+
+function stateMeta(constructor) {
+  if (!constructor) {
+    return null;
+  }
+
+  var meta = (0, _utils.funcMeta)(constructor);
+
+  if (meta.state) {
+    return meta;
+  }
+
+  meta.state = {
+    callbacks: {
+      onActivate: [],
+      onAttach: [],
+      onDetach: []
+    }
+  };
+
+  return meta;
+}
+
+function registerLock(constructor) {
+  var meta = stateMeta(constructor);
+
+  if (meta.state.registered) {
+    throw "@State() can only be used once!";
+  }
+
+  meta.state.registered = true;
+}
+
+State.onActivate = function onActivate(target, name, desc) {
+  if (typeof desc.value !== "function") {
+    throw "@State.onActivate expects a function target";
+  }
+
+  var meta = stateMeta(target.constructor);
+  meta.state.callbacks.onActivate.push(desc.value);
+};
+
+State.onAttach = function onAttach(target, name, desc) {
+  if (typeof desc.value !== "function") {
+    throw "@State.onAttach expects a function target";
+  }
+
+  var meta = stateMeta(target.constructor);
+  meta.state.callbacks.onAttach.push(desc.value);
+};
+
+State.onDetach = function onDetach(target, name, desc) {
+  if (typeof desc.value !== "function") {
+    throw "@State.onDetach expects a function target";
+  }
+
+  var meta = stateMeta(target.constructor);
+  meta.state.callbacks.onDetach.push(desc.value);
+};
+
+function mountAt(url) {
+  var opts = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
+  var name = opts.name;
+
+  return {
+    state: this,
+    url: url,
+    name: name,
+    buildUiRouterState: builder
+  };
+
+  function builder() {
+    var state = buildUiRouterState(this.state);
+
+    if (this.url) {
+      state.url = url;
+    }
+
+    if (this.name) {
+      state.name = name;
+    }
+
+    return state;
+  }
+}
+
+function buildUiRouterState(obj) {
+  console.log("buildUiRouterState: %o", obj);
+  if (!obj) {
+    return null;
+  }
+
+  if (obj.buildUiRouterState) {
+    var _state = obj.buildUiRouterState();
+    console.log("State: => %o", _state);
+    return _state;
+  }
+
+  var meta = (0, _utils.funcMeta)(obj);
+  if (!meta.state) {
+    throw Error("provided object is not a state");
+  }
+
+  var children = [];
+  var _iteratorNormalCompletion = true;
+  var _didIteratorError = false;
+  var _iteratorError = undefined;
+
+  try {
+    for (var _iterator = meta.state.children[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+      var child = _step.value;
+
+      children.push(buildUiRouterState(child));
+    }
+  } catch (err) {
+    _didIteratorError = true;
+    _iteratorError = err;
+  } finally {
+    try {
+      if (!_iteratorNormalCompletion && _iterator["return"]) {
+        _iterator["return"]();
+      }
+    } finally {
+      if (_didIteratorError) {
+        throw _iteratorError;
+      }
+    }
+  }
+
+  var state = {
+    name: meta.state.name,
+    template: meta.state.template,
+    templateUrl: meta.state.templateUrl,
+    controllerAs: meta.state.bindTo,
+    url: meta.state.url,
+    abstract: meta.state.abstract,
+    children: children,
+    controller: [meta.state.name, "$locals", "$injector", "$scope", controllerAttacher],
+    resolve: _defineProperty({}, meta.state.name, ["$q", "$controller", "$locals", "$injector", controllerProvider])
+  };
+
+  console.log("State: => %o", state);
+  return state;
+
+  function controllerAttacher(ctrl, $locals, $injector, $scope) {
+    var _iteratorNormalCompletion2 = true;
+    var _didIteratorError2 = false;
+    var _iteratorError2 = undefined;
+
+    try {
+      for (var _iterator2 = meta.callbacks.onAttach[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
+        var clb = _step2.value;
+
+        $injector.invoke(clb, ctrl, $locals);
+      }
+    } catch (err) {
+      _didIteratorError2 = true;
+      _iteratorError2 = err;
+    } finally {
       try {
-        if ($hooks.attach) {
-          var _iteratorNormalCompletion = true;
-          var _didIteratorError = false;
-          var _iteratorError = undefined;
-
-          try {
-            for (var _iterator = $hooks.attach[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
-              var hook = _step.value;
-              hook.call(ctrl);
-            }
-          } catch (err) {
-            _didIteratorError = true;
-            _iteratorError = err;
-          } finally {
-            try {
-              if (!_iteratorNormalCompletion && _iterator["return"]) {
-                _iterator["return"]();
-              }
-            } finally {
-              if (_didIteratorError) {
-                throw _iteratorError;
-              }
-            }
-          }
+        if (!_iteratorNormalCompletion2 && _iterator2["return"]) {
+          _iterator2["return"]();
         }
-
-        $scope.$on("$destroy", function () {
-          if ($hooks.detach) {
-            var _iteratorNormalCompletion2 = true;
-            var _didIteratorError2 = false;
-            var _iteratorError2 = undefined;
-
-            try {
-              for (var _iterator2 = $hooks.detach[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
-                var hook = _step2.value;
-                hook.call(ctrl);
-              }
-            } catch (err) {
-              _didIteratorError2 = true;
-              _iteratorError2 = err;
-            } finally {
-              try {
-                if (!_iteratorNormalCompletion2 && _iterator2["return"]) {
-                  _iterator2["return"]();
-                }
-              } finally {
-                if (_didIteratorError2) {
-                  throw _iteratorError2;
-                }
-              }
-            }
-          }
-        });
-      } catch (e) {
-        console.error(e);
-        throw e;
+      } finally {
+        if (_didIteratorError2) {
+          throw _iteratorError2;
+        }
       }
+    }
 
-      return ctrl;
-    };
-
-    controllerProvider = inject.call(controllerProvider, opts.name, "$hooks", "$scope");
-
-    if (callbacks.onAttach) {
+    $scope.$on("$destroy", function () {
       var _iteratorNormalCompletion3 = true;
       var _didIteratorError3 = false;
       var _iteratorError3 = undefined;
 
       try {
-        for (var _iterator3 = callbacks.onAttach[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
-          var hook = _step3.value;
+        for (var _iterator3 = meta.callbacks.onDetach[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
+          var clb = _step3.value;
 
-          controllerProvider = pushHook.call(controllerProvider, "attach", hook);
+          $injector.invoke(clb, ctrl, $locals);
         }
       } catch (err) {
         _didIteratorError3 = true;
@@ -412,377 +497,54 @@ function State(opts) {
           }
         }
       }
-    }
-    if (callbacks.onDetach) {
-      var _iteratorNormalCompletion4 = true;
-      var _didIteratorError4 = false;
-      var _iteratorError4 = undefined;
+    });
 
-      try {
-        for (var _iterator4 = callbacks.onDetach[Symbol.iterator](), _step4; !(_iteratorNormalCompletion4 = (_step4 = _iterator4.next()).done); _iteratorNormalCompletion4 = true) {
-          var hook = _step4.value;
+    return ctrl;
+  }
 
-          controllerProvider = pushHook.call(controllerProvider, "detach", hook);
-        }
-      } catch (err) {
-        _didIteratorError4 = true;
-        _iteratorError4 = err;
-      } finally {
-        try {
-          if (!_iteratorNormalCompletion4 && _iterator4["return"]) {
-            _iterator4["return"]();
-          }
-        } finally {
-          if (_didIteratorError4) {
-            throw _iteratorError4;
-          }
-        }
-      }
-    }
+  function controllerProvider($q, $controller, $locals, $injector) {
+    var ctrl = $controller(meta.controller.name, $locals);
+    var p = $q.when(ctrl);
 
-    state.controller = controllerProvider;
+    var _iteratorNormalCompletion4 = true;
+    var _didIteratorError4 = false;
+    var _iteratorError4 = undefined;
 
-    var ctrlR = function ctrlR($q, $controller, $constructorInject, $hooks) {
-      var ctrl = undefined;
-      var p = undefined;
-
-      try {
-        ctrl = $controller(constructor.$$controller.name, $constructorInject);
-        p = $q.when(ctrl);
-      } catch (e) {
-        console.error(e);
-        return $q.reject(e);
-      }
-
-      if ($hooks.activate) {
-        var _iteratorNormalCompletion5 = true;
-        var _didIteratorError5 = false;
-        var _iteratorError5 = undefined;
-
-        try {
-          var _loop = function () {
-            var hook = _step5.value;
-
-            p = p.then(function () {
-              return hook.call(ctrl);
-            });
-          };
-
-          for (var _iterator5 = $hooks.activate[Symbol.iterator](), _step5; !(_iteratorNormalCompletion5 = (_step5 = _iterator5.next()).done); _iteratorNormalCompletion5 = true) {
-            _loop();
-          }
-        } catch (err) {
-          _didIteratorError5 = true;
-          _iteratorError5 = err;
-        } finally {
-          try {
-            if (!_iteratorNormalCompletion5 && _iterator5["return"]) {
-              _iterator5["return"]();
-            }
-          } finally {
-            if (_didIteratorError5) {
-              throw _iteratorError5;
-            }
-          }
-        }
+    try {
+      var _loop = function () {
+        var clb = _step4.value;
 
         p = p.then(function () {
-          return ctrl;
+          return $injector.invoke(clb, ctrl, $locals);
         });
+      };
+
+      for (var _iterator4 = meta.callbacks.onActivate[Symbol.iterator](), _step4; !(_iteratorNormalCompletion4 = (_step4 = _iterator4.next()).done); _iteratorNormalCompletion4 = true) {
+        _loop();
       }
-
-      return p;
-    };
-
-    ctrlR = (_context = inject.call(ctrlR, "$q", "$controller", "$constructorInject", "$hooks"), namedInjectionCollector).call(_context, "$constructorInject", constructor.$inject);
-
-    if (callbacks.onActivate) {
-      var _iteratorNormalCompletion6 = true;
-      var _didIteratorError6 = false;
-      var _iteratorError6 = undefined;
-
+    } catch (err) {
+      _didIteratorError4 = true;
+      _iteratorError4 = err;
+    } finally {
       try {
-        for (var _iterator6 = callbacks.onActivate[Symbol.iterator](), _step6; !(_iteratorNormalCompletion6 = (_step6 = _iterator6.next()).done); _iteratorNormalCompletion6 = true) {
-          var hook = _step6.value;
-
-          ctrlR = pushHook.call(ctrlR, "activate", hook);
+        if (!_iteratorNormalCompletion4 && _iterator4["return"]) {
+          _iterator4["return"]();
         }
-      } catch (err) {
-        _didIteratorError6 = true;
-        _iteratorError6 = err;
       } finally {
-        try {
-          if (!_iteratorNormalCompletion6 && _iterator6["return"]) {
-            _iterator6["return"]();
-          }
-        } finally {
-          if (_didIteratorError6) {
-            throw _iteratorError6;
-          }
+        if (_didIteratorError4) {
+          throw _iteratorError4;
         }
       }
     }
 
-    state.resolve[opts.name] = ctrlR;
+    p = p.then(function () {
+      return ctrl;
+    });
+    return p;
   }
 }
 
-State.onActivate = function onActivate(target, name, desc) {
-  if (typeof desc.value !== "function") {
-    throw "@State.onActivate expects a function target";
-  }
-
-  if (!target.$$stateCallbacks) {
-    target.$$stateCallbacks = {};
-  }
-  if (!target.$$stateCallbacks.onActivate) {
-    target.$$stateCallbacks.onActivate = [];
-  }
-
-  target.$$stateCallbacks.onActivate.push(desc.value);
-};
-
-State.onAttach = function onAttach(target, name, desc) {
-  if (typeof desc.value !== "function") {
-    throw "@State.onAttach expects a function target";
-  }
-
-  if (!target.$$stateCallbacks) {
-    target.$$stateCallbacks = {};
-  }
-  if (!target.$$stateCallbacks.onAttach) {
-    target.$$stateCallbacks.onAttach = [];
-  }
-
-  target.$$stateCallbacks.onAttach.push(desc.value);
-};
-
-State.onDetach = function onDetach(target, name, desc) {
-  if (typeof desc.value !== "function") {
-    throw "@State.onDetach expects a function target";
-  }
-
-  if (!target.$$stateCallbacks) {
-    target.$$stateCallbacks = {};
-  }
-  if (!target.$$stateCallbacks.onDetach) {
-    target.$$stateCallbacks.onDetach = [];
-  }
-
-  target.$$stateCallbacks.onDetach.push(desc.value);
-};
-
-function mountAt(url) {
-  var opts = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
-  var name = opts.name;
-
-  var state = Object.create(this.$$state.state, {});
-  state.url = url;
-
-  if (name) {
-    state.name = name;
-  }
-
-  var $$state = Object.create(this.$$state, {});
-  $$state.state = state;
-
-  var $this = Object.create(this, {});
-  $this.$$state = $$state;
-
-  return $this;
-}
-
-function registerLock(constructor) {
-  var lock = constructor.$$state;
-
-  if (lock && lock.constructor === constructor) {
-    throw "@State() can only be used once!";
-  }
-
-  constructor.$$state = { constructor: constructor };
-  return constructor.$$state;
-}
-
-function applyDefaultName(opts, constructor) {
-  if (opts.name) {
-    return;
-  }
-
-  var name = opts.name;
-  name = (0, _utils.funcName)(constructor);
-  name = name[0].toLowerCase() + name.substr(1, name.length - DEFAULT_SUFFIX.length - 1);
-  opts.name = name;
-}
-
-function applyDefaultTemplate(opts) {
-  var template = opts.template;
-  var templateUrl = opts.templateUrl;
-  var children = opts.children;
-
-  if (template !== undefined || templateUrl !== undefined) {
-    return;
-  }
-
-  if (children && children.length > 0) {
-    opts.template = "<ui-view></ui-view>";
-  }
-}
-
-function inject() {
-  for (var _len = arguments.length, splat = Array(_len), _key = 0; _key < _len; _key++) {
-    splat[_key] = arguments[_key];
-  }
-
-  if (splat.length === 1 && !splat[0]) {
-    splat = [];
-  }
-  if (splat.length === 1 && splat[0].length > 0) {
-    splat = splat[0];
-  }
-
-  this.$inject = splat;
-  return this;
-}
-
-function injectionCollector(as) {
-  for (var _len2 = arguments.length, splat = Array(_len2 > 1 ? _len2 - 1 : 0), _key2 = 1; _key2 < _len2; _key2++) {
-    splat[_key2 - 1] = arguments[_key2];
-  }
-
-  if (splat.length === 1 && !splat[0]) {
-    splat = [];
-  }
-  if (splat.length === 1 && splat[0].length > 0) {
-    splat = splat[0];
-  }
-
-  var base = this;
-  var $inject = (base.$inject || []).concat([]);
-  var injectLen = base.$inject.length;
-  var splatIdxs = [];
-
-  var idx = $inject.indexOf(as);
-  if (idx < 0) {
-    return base;
-  }
-
-  while (idx >= 0) {
-    splatIdxs.unshift(idx);
-    $inject.splice(idx, 1);
-    injectLen--;
-    idx = $inject.indexOf(as);
-  }
-
-  $inject = $inject.concat(splat);
-  collectInjections.$inject = $inject;
-  return collectInjections;
-
-  function collectInjections() {
-    var injectVals = Array.prototype.slice.call(arguments, 0, injectLen);
-    var splatVals = Array.prototype.slice.call(arguments, injectLen);
-
-    for (var splatIdx in splatIdxs) {
-      injectVals.splice(splatIdxs[splatIdx], 0, splatVals);
-    }
-
-    return base.apply(this, injectVals);
-  }
-}
-
-function namedInjectionCollector(as) {
-  for (var _len3 = arguments.length, splat = Array(_len3 > 1 ? _len3 - 1 : 0), _key3 = 1; _key3 < _len3; _key3++) {
-    splat[_key3 - 1] = arguments[_key3];
-  }
-
-  if (splat.length === 1 && !splat[0]) {
-    splat = [];
-  }
-  if (splat.length === 1 && splat[0].length > 0) {
-    splat = splat[0];
-  }
-
-  var base = this;
-  var $inject = (base.$inject || []).concat([]);
-  var injectLen = base.$inject.length;
-  var splatIdxs = [];
-
-  var idx = $inject.indexOf(as);
-  if (idx < 0) {
-    return base;
-  }
-
-  while (idx >= 0) {
-    splatIdxs.unshift(idx);
-    $inject.splice(idx, 1);
-    injectLen--;
-    idx = $inject.indexOf(as);
-  }
-
-  $inject = $inject.concat(splat);
-  collectInjections.$inject = $inject;
-  return collectInjections;
-
-  function collectInjections() {
-    var injectVals = Array.prototype.slice.call(arguments, 0, injectLen);
-    var splatVals = Array.prototype.slice.call(arguments, injectLen);
-
-    var namedSplat = {};
-
-    for (var nameIdx in splat) {
-      namedSplat[splat[nameIdx]] = splatVals[nameIdx];
-    }
-
-    for (var splatIdx in splatIdxs) {
-      injectVals.splice(splatIdxs[splatIdx], 0, namedSplat);
-    }
-
-    return base.apply(this, injectVals);
-  }
-}
-
-_app.app.constant("$hooks", { $fake: true });
-var nextHookId = 0;
-function pushHook(name, func) {
-  if (!func) {
-    return this;
-  }
-
-  var base = this;
-  nextHookId++;
-  var hookId = "_hook_" + name + "_" + nextHookId;
-  var $inject = base.$inject || [];
-  var hooksIdx = $inject.indexOf("$hooks");
-
-  binder.$inject = [hookId].concat($inject);
-  return injectionCollector.call(binder, hookId, func.$inject);
-
-  function binder(vars) {
-    for (var _len4 = arguments.length, rest = Array(_len4 > 1 ? _len4 - 1 : 0), _key4 = 1; _key4 < _len4; _key4++) {
-      rest[_key4 - 1] = arguments[_key4];
-    }
-
-    var hooks = rest[hooksIdx];
-    if (!hooks || hooks.$fake) {
-      hooks = {};
-      rest[hooksIdx] = hooks;
-    }
-
-    var chain = hooks[name];
-    if (!chain) {
-      chain = [];
-      hooks[name] = chain;
-    }
-
-    chain.push(hook);
-    return base.apply(this, rest);
-
-    function hook() {
-      return func.apply(this, vars);
-    }
-  }
-}
-
-},{"./Controller":2,"./app":6,"./utils":8}],6:[function(require,module,exports){
+},{"./Controller":2,"./utils":8}],6:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -808,14 +570,50 @@ require("angular-ui-router");
 
 require("angular-ui-router.statehelper");
 
+var _State = require("./State");
+
 var appRootState = null;
 var appDeps = ["ui.router", "ui.router.stateHelper"];
 var app = _angular2["default"].module("app", appDeps);
 
 exports.app = app;
+app.config(["$injector", function ($injector) {
+
+  var originalInvoke = $injector.invoke;
+  $injector.invoke = function invoke(fn, self, locals, serviceName) {
+    if (typeof locals === "string") {
+      serviceName = locals;
+      locals = null;
+    }
+
+    if (!locals) {
+      locals = {};
+    }
+    locals.$locals = locals;
+
+    return originalInvoke.call(this, fn, self, locals, serviceName);
+  };
+
+  var originalInstantiate = $injector.instantiate;
+  $injector.instantiate = function instantiate(Type, locals, serviceName) {
+    if (typeof locals === "string") {
+      serviceName = locals;
+      locals = null;
+    }
+
+    if (!locals) {
+      locals = {};
+    }
+    locals.$locals = locals;
+
+    return originalInstantiate.call(this, Type, locals, serviceName);
+  };
+}]);
+
 app.config(["stateHelperProvider", function (stateHelperProvider) {
   if (appRootState) {
-    stateHelperProvider.setNestedState(appRootState);
+    var state = (0, _State.buildUiRouterState)(appRootState);
+    stateHelperProvider.setNestedState(state);
   }
 }]);
 
@@ -834,7 +632,7 @@ function beforeBoot(p) {
 }
 
 function bootstrap(mainState) {
-  appRootState = mainState && mainState.$$state && mainState.$$state.state || undefined;
+  appRootState = mainState;
   var _iteratorNormalCompletion = true;
   var _didIteratorError = false;
   var _iteratorError = undefined;
@@ -878,7 +676,7 @@ function bootstrap(mainState) {
   });
 }
 
-},{"angular":undefined,"angular-ui-router":undefined,"angular-ui-router.statehelper":undefined,"jquery":undefined}],7:[function(require,module,exports){
+},{"./State":5,"angular":undefined,"angular-ui-router":undefined,"angular-ui-router.statehelper":undefined,"jquery":undefined}],7:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -969,7 +767,16 @@ Object.defineProperty(exports, "mountAt", {
   }
 });
 
-},{"./Component":1,"./Controller":2,"./Inject":3,"./Service":4,"./State":5,"./app":6}],8:[function(require,module,exports){
+var _utils = require("./utils");
+
+Object.defineProperty(exports, "Metadata", {
+  enumerable: true,
+  get: function get() {
+    return _utils.funcMeta;
+  }
+});
+
+},{"./Component":1,"./Controller":2,"./Inject":3,"./Service":4,"./State":5,"./app":6,"./utils":8}],8:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -978,6 +785,10 @@ Object.defineProperty(exports, "__esModule", {
 exports.dashCase = dashCase;
 exports.funcName = funcName;
 exports.superClass = superClass;
+exports.funcMeta = funcMeta;
+exports.wrapFunc = wrapFunc;
+
+var _app = require("./app");
 
 function dashCase(str) {
   return str.replace(/([A-Z])/g, function ($1) {
@@ -985,29 +796,86 @@ function dashCase(str) {
   });
 }
 
-function funcName(f) {
-  var name = f && f.name || null;
-
-  if (name === null) {
-    name = f.toString().match(/^function\s*([^\s(]+)/)[1];
-  }
-
-  return name;
+function funcName(func) {
+  return funcMeta(func).name;
 }
 
-function superClass(constructor) {
-  if (!constructor) {
-    return Object;
-  }
-  if (!constructor.prototype) {
-    return Object;
-  }
-  if (!Object.getPrototypeOf(constructor.prototype)) {
-    return Object;
-  }
-  return Object.getPrototypeOf(constructor.prototype).constructor || Object;
+function superClass(func) {
+  return funcMeta(func).superClass;
 }
 
-},{}]},{},[7])(7)
+function funcMeta(func) {
+  if (func.$meta !== undefined) {
+    return func.$meta;
+  }
+
+  var meta = {
+    controller: null,
+    service: null,
+    state: null,
+    wrappers: null,
+    base: func,
+    top: func,
+    name: getName(),
+    superClass: getSuperClass()
+  };
+
+  func.$meta = meta;
+
+  return meta;
+
+  function getName() {
+    var name = func && func.name || null;
+    if (name === null) {
+      name = func.toString().match(/^function\s*([^\s(]+)/)[1];
+    }
+    return name;
+  }
+
+  function getSuperClass() {
+    if (!func) {
+      return null;
+    }
+    if (!func.prototype) {
+      return null;
+    }
+    if (!Object.getPrototypeOf(func.prototype)) {
+      return null;
+    }
+    return Object.getPrototypeOf(func.prototype).constructor || null;
+  }
+}
+
+function wrapFunc(func, wrapperFunc) {
+  var meta = funcMeta(func);
+
+  meta.top = wrapperFunc;
+  if (!meta.wrappers) {
+    meta.wrappers = [wrapperFunc];
+  } else {
+    meta.wrappers.unshift(wrapperFunc);
+  }
+
+  wrapperFunc.$meta = meta;
+
+  // inherit $inject
+  if (func.$inject) {
+    wrapperFunc.$inject = func.$inject.slice();
+  }
+
+  if (meta.controller) {
+    // re-register controller
+    _app.app.controller(meta.controller.name, meta.top);
+  }
+
+  if (meta.service) {
+    // re-register service
+    _app.app.service(meta.service.name, meta.top);
+  }
+
+  return wrapperFunc;
+}
+
+},{"./app":6}]},{},[7])(7)
 });
 //# sourceMappingURL=fd-angular-core.js.map
