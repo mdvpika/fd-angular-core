@@ -103,12 +103,14 @@ function registerLock(constructor) {
 }
 
 },{"./app":6,"./utils":8}],3:[function(require,module,exports){
-"use strict";
+'use strict';
 
-Object.defineProperty(exports, "__esModule", {
+Object.defineProperty(exports, '__esModule', {
   value: true
 });
 exports.Inject = Inject;
+
+var _app = require('./app');
 
 function Inject() {
   for (var _len = arguments.length, deps = Array(_len), _key = 0; _key < _len; _key++) {
@@ -116,7 +118,7 @@ function Inject() {
   }
 
   return function (constructor, name, desc) {
-    if (desc && typeof desc.value === "function") {
+    if (desc && typeof desc.value === 'function') {
       desc.value.$inject = deps;
     } else {
       constructor.$inject = deps;
@@ -124,7 +126,52 @@ function Inject() {
   };
 }
 
-},{}],4:[function(require,module,exports){
+_app.app.run(['$injector', function $superProvider($injector) {
+
+  $injector.superConstruct = function superConstruct(target, locals) {
+    return this.superCall(target, 'constructor', locals);
+  };
+
+  $injector.superCall = function superCall(target, method, locals) {
+    var func = get(Object.getPrototypeOf(B.prototype), method, this);
+    return this.invoke(func, target, locals);
+  };
+
+  function get(_x, _x2, _x3) {
+    var _again = true;
+    _function: while (_again) {
+      var object = _x,
+          property = _x2,
+          receiver = _x3;
+      desc = parent = getter = undefined;
+      _again = false;
+      if (object === null) object = Function.prototype;
+      var desc = Object.getOwnPropertyDescriptor(object, property);
+      if (desc === undefined) {
+        var parent = Object.getPrototypeOf(object);
+        if (parent === null) {
+          return undefined;
+        } else {
+          _x = parent;
+          _x2 = property;
+          _x3 = receiver;
+          _again = true;
+          continue _function;
+        }
+      } else if ('value' in desc) {
+        return desc.value;
+      } else {
+        var getter = desc.get;
+        if (getter === undefined) {
+          return undefined;
+        }
+        return getter.call(receiver);
+      }
+    }
+  }
+}]);
+
+},{"./app":6}],4:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -526,7 +573,7 @@ State.onDetach = function onDetach(target, name, desc) {
 };
 
 function mountAt(url) {
-  var opts = arguments[1] === undefined ? {} : arguments[1];
+  var opts = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
   var name = opts.name;
 
   var state = Object.create(this.$$state.state, {});
@@ -788,16 +835,15 @@ function beforeBoot(p) {
 
 function bootstrap(mainState) {
   appRootState = mainState && mainState.$$state && mainState.$$state.state || undefined;
-
-  for (var _len = arguments.length, deps = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
-    deps[_key - 1] = arguments[_key];
-  }
-
   var _iteratorNormalCompletion = true;
   var _didIteratorError = false;
   var _iteratorError = undefined;
 
   try {
+    for (var _len = arguments.length, deps = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+      deps[_key - 1] = arguments[_key];
+    }
+
     for (var _iterator = deps[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
       var dep = _step.value;
 
