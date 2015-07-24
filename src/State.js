@@ -15,6 +15,8 @@ const DEFAULT_SUFFIX = "Controller";
 @param {string}  [opts.templateUrl] - A URL to an angular template.
 @param {State[]} [opts.children] - List of child states.
 @param {string}  [opts.controllerName] - The name of the controller as seen by angular.
+@param {Object}  [opts.resolve] - Any required resolved.
+@param {Object}  [opts.views] - State views
 */
 export function State(opts) {
   if (typeof opts === "function") {
@@ -35,13 +37,13 @@ export function State(opts) {
 
     let prototype = constructor.prototype;
     if (prototype.activate) {
-      State.onActivate(prototype, "activate", { value: prototype.activate });
+      meta.state.callbacks.onActivate.push(prototype.activate);
     }
     if (prototype.attach) {
-      State.onAttach(prototype, "attach", { value: prototype.attach });
+      meta.state.callbacks.onAttach.push(prototype.attach);
     }
     if (prototype.detach) {
-      State.onDetach(prototype, "detach", { value: prototype.detach });
+      meta.state.callbacks.onDetach.push(prototype.detach);
     }
 
     if (superMeta.state.callbacks) {
@@ -64,28 +66,6 @@ export function State(opts) {
       meta.state.children = [];
     }
 
-    let inheritedTemplated = false;
-    if (opts.template === false) {
-      meta.state.template = null;
-    } else if (opts.template) {
-      meta.state.template = opts.template;
-    } else if (opts.templateUrl) {
-      meta.state.templateUrl = opts.templateUrl;
-    } else if (superMeta.state.template) {
-      inheritedTemplated = true;
-      meta.state.template = superMeta.state.template;
-    } else if (superMeta.state.templateUrl) {
-      inheritedTemplated = true;
-      meta.state.templateUrl = superMeta.state.templateUrl;
-    }
-    if (!meta.state.template && !meta.state.templateUrl) {
-      if (meta.state.children.length > 0) {
-        meta.state.template = `<ui-view></ui-view>`;
-      } else {
-        meta.state.template = ``;
-      }
-    }
-
     if (opts.name) {
       meta.state.name = opts.name;
     } else {
@@ -94,23 +74,26 @@ export function State(opts) {
       meta.state.name = name;
     }
 
-    if (opts.bindTo) {
-      if (inheritedTemplated) {
-        throw Error("bindTo cannot be used with inherited templates");
-      }
-      meta.state.bindTo = opts.bindTo;
-    } else {
-      if (inheritedTemplated) {
-        meta.state.bindTo = superMeta.state.bindTo;
-      } else {
-        meta.state.bindTo = meta.state.name;
-      }
+    let views = {};
+    if (superMeta.state.views) {
+      Object.assign(views, superMeta.state.views);
     }
+    if (opts.views) {
+      Object.assign(views, opts.views);
+    }
+    if (opts.template === false) {
+      views[''] = undefined;
+    } else if (opts.template !== undefined) {
+      views[''] = { template: opts.template, bindTo: (opts.bindTo || meta.state.name) };
+    } else if (opts.templateUrl) {
+      views[''] = { templateUrl: opts.templateUrl, bindTo: (opts.bindTo || meta.state.name) };
+    }
+    meta.state.views = views;
 
-    if (opts.url === false) {
-      if (opts.url) {
+    if (opts.url !== false) {
+      if (opts.url !== undefined) {
         meta.state.url = opts.url;
-      } else if (superMeta.state.url) {
+      } else if (superMeta.state.url !== undefined) {
         meta.state.url = superMeta.state.url;
       }
     }
@@ -121,6 +104,14 @@ export function State(opts) {
       meta.state.abstract = true;
     } else if (opts.abstract === false) {
       meta.state.abstract = false;
+    }
+
+    meta.state.resolve = {};
+    if (opts.resolve !== false) {
+      Object.assign(meta.state.resolve, superMeta.state.resolve);
+      if (opts.resolve) {
+        Object.assign(meta.state.resolve, opts.resolve);
+      }
     }
 
   }
@@ -211,14 +202,12 @@ export function mountAt(url, opts={}) {
 }
 
 export function buildUiRouterState(obj) {
-  console.log("buildUiRouterState: %o", obj);
   if (!obj) {
     return null;
   }
 
   if (obj.buildUiRouterState) {
     let state = obj.buildUiRouterState();
-    console.log("State: => %o", state);
     return state;
   }
 
@@ -232,30 +221,59 @@ export function buildUiRouterState(obj) {
     children.push(buildUiRouterState(child));
   }
 
+  let views = {};
+  for (let key of Object.keys(meta.state.views)) {
+    let view = meta.state.views[key];
+    if (!view) { continue; }
+
+    views[key] = {
+      template:     view.template,
+      templateUrl:  view.templateUrl,
+      controllerAs: view.bindTo,
+      controller:   controllerAttacher,
+    };
+  }
+  if (meta.state.views[''] === undefined) {
+    if (children.length > 0) {
+      views[''] = {
+        template:     '<ui-view></ui-view>',
+        controllerAs: (meta.state.bindTo || meta.state.name),
+        controller:   controllerAttacher,
+      };
+    } else {
+      views[''] = {
+        template:     '',
+        controllerAs: (meta.state.bindTo || meta.state.name),
+        controller:   controllerAttacher,
+      };
+    }
+  }
+
+  let resolve = {};
+  Object.assign(resolve, meta.state.resolve);
+  controllerAttacher.$inject = [meta.state.name, '$locals', '$injector', '$scope'].concat(Object.keys(resolve));
+  controllerProvider.$inject = ['$q', '$controller', '$locals', '$injector'].concat(Object.keys(resolve));
+  resolve[meta.state.name] = controllerProvider;
+  resolve.$viewCounter = () => ({ attached: 0, count: Object.keys(views).length });
+
   let state = {
-    name:         meta.state.name,
-    template:     meta.state.template,
-    templateUrl:  meta.state.templateUrl,
-    controllerAs: meta.state.bindTo,
-    url:          meta.state.url,
-    abstract:     meta.state.abstract,
-    children:     children,
-    controller:   [meta.state.name, '$locals', '$injector', '$scope', controllerAttacher],
-    resolve:      {
-      [meta.state.name]: ['$q', '$controller', '$locals', '$injector', controllerProvider],
-    },
+    name:     meta.state.name,
+    url:      meta.state.url,
+    abstract: meta.state.abstract,
+    children: children,
+    resolve:  resolve,
+    views:    views,
   };
 
-  console.log("State: => %o", state);
   return state;
 
   function controllerAttacher(ctrl, $locals, $injector, $scope) {
-    for (let clb of meta.callbacks.onAttach) {
+    for (let clb of meta.state.callbacks.onAttach) {
       $injector.invoke(clb, ctrl, $locals);
     }
 
     $scope.$on("$destroy", function() {
-      for (let clb of meta.callbacks.onDetach) {
+      for (let clb of meta.state.callbacks.onDetach) {
         $injector.invoke(clb, ctrl, $locals);
       }
     });
@@ -267,7 +285,7 @@ export function buildUiRouterState(obj) {
     let ctrl = $controller(meta.controller.name, $locals);
     let p = $q.when(ctrl);
 
-    for (let clb of meta.callbacks.onActivate) {
+    for (let clb of meta.state.callbacks.onActivate) {
       p = p.then(() => $injector.invoke(clb, ctrl, $locals));
     }
 

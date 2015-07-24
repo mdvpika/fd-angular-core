@@ -1,5 +1,6 @@
 import $ from "jquery";
 import angular from "angular";
+import {extendInjector} from './injector';
 
 // Base modules
 import "angular-ui-router";
@@ -11,38 +12,8 @@ let appRootState = null;
 let appDeps = ["ui.router", "ui.router.stateHelper"];
 export var app = angular.module("app", appDeps);
 
-app.config(['$injector', function($injector) {
-
-  let originalInvoke = $injector.invoke;
-  $injector.invoke = function invoke(fn, self, locals, serviceName) {
-    if (typeof locals === 'string') {
-      serviceName = locals;
-      locals = null;
-    }
-
-    if (!locals) {
-      locals = {};
-    }
-    locals.$locals = locals;
-
-    return originalInvoke.call(this, fn, self, locals, serviceName);
-  };
-
-  let originalInstantiate = $injector.instantiate;
-  $injector.instantiate = function instantiate(Type, locals, serviceName) {
-    if (typeof locals === 'string') {
-      serviceName = locals;
-      locals = null;
-    }
-
-    if (!locals) {
-      locals = {};
-    }
-    locals.$locals = locals;
-
-    return originalInstantiate.call(this, Type, locals, serviceName);
-  };
-
+app.run(['$injector', function($injector) {
+  extendInjector($injector);
 }]);
 
 app.config(["stateHelperProvider", function(stateHelperProvider) {
@@ -73,7 +44,8 @@ export function bootstrap(mainState, ...deps) {
     return new Promise(function(resolve, reject){
       $(() => {
         try {
-          angular.bootstrap(document, ["app"]);
+          let injector = angular.bootstrap(document, ["app"]);
+          extendInjector(injector);
           resolve();
         } catch(e) {
           reject(e);

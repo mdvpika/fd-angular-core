@@ -4,8 +4,10 @@ export function Inject(...deps) {
 
     if (isMethod) {
       desc.value.$inject = deps;
+      return desc;
     } else {
       target.$inject = deps;
+      return target;
     }
   };
 }

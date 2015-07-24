@@ -3,5 +3,6 @@ export {Inject} from "./Inject";
 export {Service} from "./Service";
 export {Controller} from "./Controller";
 export {Component} from "./Component";
-export {State, mountAt} from "./State";
+export {State, mountAt, buildUiRouterState} from "./State";
 export {funcMeta as Metadata} from './utils';
+export {Redirect} from './StateRedirect';
