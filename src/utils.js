@@ -14,6 +14,11 @@ export function superClass(func) {
 	return funcMeta(func).superClass;
 }
 
+/**
+@function Metadata
+@param {Function} func
+@returns {Object} The function metadata.
+*/
 export function funcMeta(func) {
 	if (!func) {
 		return null;

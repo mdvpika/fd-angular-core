@@ -3,9 +3,8 @@ import {Controller} from "./Controller";
 
 const DEFAULT_SUFFIX = "Controller";
 
-
-
 /**
+@function State
 @param {Object}  opts - The options
 @param {string}  [opts.name] - The name of the state.
 @param {string}  [opts.bindTo] - Bind the controller to the provided name.
@@ -17,6 +16,14 @@ const DEFAULT_SUFFIX = "Controller";
 @param {string}  [opts.controllerName] - The name of the controller as seen by angular.
 @param {Object}  [opts.resolve] - Any required resolved.
 @param {Object}  [opts.views] - State views
+
+@example
+[@]State({
+	url: "/",
+	template: `<h1>Hello World</h1>`,
+})
+class HelloWorld {
+}
 */
 export function State(opts) {
 	if (typeof opts === "function") {
@@ -176,6 +183,15 @@ State.onDetach = function onDetach(target, name, desc) {
 	meta.state.callbacks.onDetach.push(desc.value);
 };
 
+/**
+@function mountAt
+@param {String} url
+@param {Object} [opts]
+@param {String} [opts.name]
+
+@example
+SomeState::mountAt("/some/url")
+*/
 export function mountAt(url, opts={}) {
 	let {name} = opts;
 
@@ -282,14 +298,24 @@ export function buildUiRouterState(obj) {
 	}
 
 	function controllerProvider($q, $controller, $locals, $injector) {
-		let ctrl = $controller(meta.controller.name, $locals);
-		let p = $q.when(ctrl);
+		return $q(function(ok, err) {
+			try {
+				let ctrl = $controller(meta.controller.name, $locals);
+				let p = $q.when(ctrl);
 
-		for (let clb of meta.state.callbacks.onActivate) {
-			p = p.then(() => $injector.invoke(clb, ctrl, $locals));
-		}
+				for (let clb of meta.state.callbacks.onActivate) {
+					p = p.then(() => $injector.invoke(clb, ctrl, $locals));
+				}
 
-		p = p.then(() => ctrl);
-		return p;
+				p = p.then(() => ctrl);
+				ok(p);
+			} catch (e) {
+				err(e);
+			}
+		})
+		.catch(err => {
+			console.error("Error:", err);
+			return $q.reject(err);
+		});
 	}
 }

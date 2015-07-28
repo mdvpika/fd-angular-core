@@ -14,6 +14,26 @@ var _Controller = require("./Controller");
 
 var DEFAULT_SUFFIX = "Controller";
 
+/**
+Declare an angular Component directive.
+
+@function Component
+
+@param {Object} [opts]
+@param {String} [opts.name]
+@param {String} [opts.restrict="EA"]
+@param {Object} [opts.scope={}]
+@param {String} [opts.template]
+@param {String} [opts.templateUrl]
+
+@example
+[@]Component({
+	scope: { "attr": "=" }
+})
+class MyComponentController {}
+
+*/
+
 function Component(opts) {
 	if (typeof opts === "function") {
 		var _constructor = opts;opts = null;
@@ -73,6 +93,16 @@ var _utils = require("./utils");
 
 var _app = require("./app");
 
+/**
+@function Controller
+@param {String} [name] - The name of the controller.
+
+@example
+[@]Controller()
+class MyController {}
+
+*/
+
 function Controller(name, options) {
 	if (typeof name === "function") {
 		var _constructor = name;name = null;
@@ -103,6 +133,20 @@ function registerLock(constructor) {
 }
 
 },{"./app":7,"./utils":10}],3:[function(require,module,exports){
+
+/**
+@function Inject
+@param {...String} deps - Names of values to inject.
+
+@example
+[@]Inject('$scope')
+class MyController {
+	constructor($scope) {
+		// ...
+	}
+}
+
+*/
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -139,6 +183,17 @@ exports.Service = Service;
 var _utils = require("./utils");
 
 var _app = require("./app");
+
+/**
+@function Service
+@public
+@param {String} [name]
+
+@example
+[@]Service()
+class MyService {}
+
+*/
 
 function Service(name) {
 	if (typeof name === "function") {
@@ -186,6 +241,7 @@ var _Controller = require("./Controller");
 var DEFAULT_SUFFIX = "Controller";
 
 /**
+@function State
 @param {Object}  opts - The options
 @param {string}  [opts.name] - The name of the state.
 @param {string}  [opts.bindTo] - Bind the controller to the provided name.
@@ -197,6 +253,14 @@ var DEFAULT_SUFFIX = "Controller";
 @param {string}  [opts.controllerName] - The name of the controller as seen by angular.
 @param {Object}  [opts.resolve] - Any required resolved.
 @param {Object}  [opts.views] - State views
+
+@example
+[@]State({
+	url: "/",
+	template: `<h1>Hello World</h1>`,
+})
+class HelloWorld {
+}
 */
 
 function State(opts) {
@@ -352,6 +416,16 @@ State.onDetach = function onDetach(target, name, desc) {
 	var meta = stateMeta(target.constructor);
 	meta.state.callbacks.onDetach.push(desc.value);
 };
+
+/**
+@function mountAt
+@param {String} url
+@param {Object} [opts]
+@param {String} [opts.name]
+
+@example
+SomeState::mountAt("/some/url")
+*/
 
 function mountAt(url) {
 	var opts = arguments[1] === undefined ? {} : arguments[1];
@@ -549,44 +623,63 @@ function buildUiRouterState(obj) {
 	}
 
 	function controllerProvider($q, $controller, $locals, $injector) {
-		var ctrl = $controller(meta.controller.name, $locals);
-		var p = $q.when(ctrl);
-
-		var _iteratorNormalCompletion5 = true;
-		var _didIteratorError5 = false;
-		var _iteratorError5 = undefined;
-
-		try {
-			var _loop = function () {
-				var clb = _step5.value;
-
-				p = p.then(function () {
-					return $injector.invoke(clb, ctrl, $locals);
-				});
-			};
-
-			for (var _iterator5 = meta.state.callbacks.onActivate[Symbol.iterator](), _step5; !(_iteratorNormalCompletion5 = (_step5 = _iterator5.next()).done); _iteratorNormalCompletion5 = true) {
-				_loop();
-			}
-		} catch (err) {
-			_didIteratorError5 = true;
-			_iteratorError5 = err;
-		} finally {
+		return $q(function (ok, err) {
 			try {
-				if (!_iteratorNormalCompletion5 && _iterator5["return"]) {
-					_iterator5["return"]();
-				}
-			} finally {
-				if (_didIteratorError5) {
-					throw _iteratorError5;
-				}
-			}
-		}
+				var _iteratorNormalCompletion5;
 
-		p = p.then(function () {
-			return ctrl;
+				var _didIteratorError5;
+
+				var _iteratorError5;
+
+				var _iterator5, _step5;
+
+				(function () {
+					var ctrl = $controller(meta.controller.name, $locals);
+					var p = $q.when(ctrl);
+
+					_iteratorNormalCompletion5 = true;
+					_didIteratorError5 = false;
+					_iteratorError5 = undefined;
+
+					try {
+						var _loop = function () {
+							var clb = _step5.value;
+
+							p = p.then(function () {
+								return $injector.invoke(clb, ctrl, $locals);
+							});
+						};
+
+						for (_iterator5 = meta.state.callbacks.onActivate[Symbol.iterator](); !(_iteratorNormalCompletion5 = (_step5 = _iterator5.next()).done); _iteratorNormalCompletion5 = true) {
+							_loop();
+						}
+					} catch (err) {
+						_didIteratorError5 = true;
+						_iteratorError5 = err;
+					} finally {
+						try {
+							if (!_iteratorNormalCompletion5 && _iterator5["return"]) {
+								_iterator5["return"]();
+							}
+						} finally {
+							if (_didIteratorError5) {
+								throw _iteratorError5;
+							}
+						}
+					}
+
+					p = p.then(function () {
+						return ctrl;
+					});
+					ok(p);
+				})();
+			} catch (e) {
+				err(e);
+			}
+		})["catch"](function (err) {
+			console.error("Error:", err);
+			return $q.reject(err);
 		});
-		return p;
 	}
 }
 
@@ -687,6 +780,9 @@ require("angular-ui-router.statehelper");
 
 var _State = require("./State");
 
+/**
+@var {ngModule} app
+*/
 var appRootState = null;
 var appDeps = ["ui.router", "ui.router.stateHelper"];
 var app = _angular2["default"].module("app", appDeps);
@@ -703,19 +799,39 @@ app.config(["stateHelperProvider", function (stateHelperProvider) {
 	}
 }]);
 
+/**
+@function includeModule
+@param {String} name - name of the module to include.
+*/
+
 function includeModule(name) {
 	appDeps.push(name);
 }
 
+/**
+@var {angular} ng
+*/
 var ng = _angular2["default"];
 exports.ng = ng;
 var beforeBootPromise = Promise.resolve(true);
+
+/**
+@function beforeBoot
+@param {Promise} p - includes a Promise before the app is booted.
+*/
 
 function beforeBoot(p) {
 	beforeBootPromise = beforeBootPromise.then(function () {
 		return Promise.resolve(p);
 	});
 }
+
+/**
+@function bootstrap
+@param {State} mainState
+@param {...Sgtring} deps
+@return {Promise}
+*/
 
 function bootstrap(mainState) {
 	appRootState = mainState;
@@ -960,6 +1076,12 @@ function funcName(func) {
 function superClass(func) {
 	return funcMeta(func).superClass;
 }
+
+/**
+@function Metadata
+@param {Function} func
+@returns {Object} The function metadata.
+*/
 
 function funcMeta(func) {
 	if (!func) {

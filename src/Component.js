@@ -4,6 +4,25 @@ import {Controller} from "./Controller";
 
 const DEFAULT_SUFFIX = "Controller";
 
+/**
+Declare an angular Component directive.
+
+@function Component
+
+@param {Object} [opts]
+@param {String} [opts.name]
+@param {String} [opts.restrict="EA"]
+@param {Object} [opts.scope={}]
+@param {String} [opts.template]
+@param {String} [opts.templateUrl]
+
+@example
+[@]Component({
+	scope: { "attr": "=" }
+})
+class MyComponentController {}
+
+*/
 export function Component(opts) {
 	if (typeof opts === "function") {
 		let constructor = opts; opts = null;

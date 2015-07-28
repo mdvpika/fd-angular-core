@@ -1,6 +1,16 @@
 import {funcMeta} from "./utils";
 import {app} from "./app";
 
+/**
+@function Service
+@public
+@param {String} [name]
+
+@example
+[@]Service()
+class MyService {}
+
+*/
 export function Service(name) {
 	if (typeof name === "function") {
 		let constructor = name; name = null;

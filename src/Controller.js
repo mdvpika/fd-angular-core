@@ -1,6 +1,15 @@
 import {funcMeta} from "./utils";
 import {app} from "./app";
 
+/**
+@function Controller
+@param {String} [name] - The name of the controller.
+
+@example
+[@]Controller()
+class MyController {}
+
+*/
 export function Controller(name, options) {
 	if (typeof name === "function") {
 		let constructor = name; name = null;
