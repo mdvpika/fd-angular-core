@@ -1,6 +1,10 @@
 language: node_js
 node_js:
 - '0.12'
+script: |
+  npm run-script build
+  npm test
+  npm run-script deploy-doc
 deploy:
   provider: npm
   email: simon.menke@gmail.com
@@ -9,3 +13,6 @@ deploy:
   on:
     tags: true
     repo: fd/fd-angular-core
+env:
+  global:
+    secure: L8oON8wpBEIDQa7EXCZiMJ5tJqW5OT1ASY5C+X8/6dXlip+ZdGRZXqLtk5MPt7NfC0tE7F3Qwrr04L/iZNBdnn7aQyNQ+hxYsajzTdkyWI/hG8O1Jdg9C8Mns0l7jtGyj6CFXBOoR0DQJy1kzC0YI6OwJ2pxjwBr3eb8c/Hus2K22JIG0ocZZNDR3eHcSUYtla4+hf8UiryO8WnpConlm/9+291yfkJm7m6Wy/jokrPVH0net2htJPGZ/LrkrwOsxvKPEt1xYN8ClInFjgdSWHemUEK8tReB4+frB7KwbOWac0tfQ1brt11uU3UPteJL6WJxqFVmAXJO7ebFg0IGJPZS4zMaDNaHImYf9u5ydpt0XL5IFR+glYNQDvQEL4hqgvxiBzBctmSqVOSGtdHZIMzts4bFw83r5BCdvhTLC8wILUMa8T2AiUffwV5FZ8IxvpzHYYdTQA550YOCkfTxyG+R/5EiuUNviXP0Jav5i9ts+VIrflgdkEojSzlDCLqX1SGpwmQxuWkQyBt0HrVqX06q80d9wSec6TOVsgullbFrK7hDdNdLKnGFwlB2MLLI/6MJQ3UaW3bBMXfpbg7NRlL+8TbbjWs+iEFfc7ZOHv0eQyW5ZBWOttq+Oxfk/R23rRVyOmCORY1gh0liJvATWHQNiMdSZglnqJB/Z2OiPYk=

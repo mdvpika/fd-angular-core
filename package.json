@@ -6,6 +6,7 @@
   "main": "lib/index.js",
   "scripts": {
     "test": "echo 'No tests...'",
+    "deploy-doc": "make deploy",
     "build": "make"
   },
   "keywords": [

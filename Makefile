@@ -25,4 +25,7 @@ dist: lib $(LIB_FILES)
 	rm dist/fd-angular-core.raw.js
 	@touch dist
 
-.PHONEY: all clean
+deploy: doc
+	@bash ./script/deploy-docs.sh
+
+.PHONEY: all clean deploy
