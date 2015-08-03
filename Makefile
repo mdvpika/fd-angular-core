@@ -19,8 +19,7 @@ dist: lib $(LIB_FILES)
 	browserify lib/index.js -o dist/fd-angular-core.raw.js --standalone=FdAngularCore --extension=js --debug \
 		--exclude jquery \
 		--exclude angular \
-		--exclude angular-ui-router \
-		--exclude angular-ui-router.statehelper
+		--exclude angular-ui-router
 	cat dist/fd-angular-core.raw.js | exorcist dist/fd-angular-core.js.map > dist/fd-angular-core.js
 	rm dist/fd-angular-core.raw.js
 	@touch dist

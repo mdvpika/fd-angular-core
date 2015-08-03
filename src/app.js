@@ -4,25 +4,27 @@ import {extendInjector} from './injector';
 
 // Base modules
 import "angular-ui-router";
-import "angular-ui-router.statehelper";
 
-import {buildUiRouterState} from './State';
+import {buildUiRouterState, flattenUiRouterStates} from './State';
 
 /**
 @var {ngModule} app
 */
 let appRootState = null;
-let appDeps = ["ui.router", "ui.router.stateHelper"];
+let appDeps = ["ui.router"];
 export var app = angular.module("app", appDeps);
 
 app.run(['$injector', function($injector) {
 	extendInjector($injector);
 }]);
 
-app.config(["stateHelperProvider", function(stateHelperProvider) {
+app.config(["$stateProvider", function($stateProvider) {
 	if (appRootState) {
 		let state = buildUiRouterState(appRootState);
-		stateHelperProvider.setNestedState(state);
+		let states = flattenUiRouterStates(state);
+		for (let state of states) {
+			$stateProvider.state(state);
+		}
 	}
 }]);
 

@@ -7,6 +7,7 @@ const DEFAULT_SUFFIX = "Controller";
 @function State
 @param {Object}  opts - The options
 @param {string}  [opts.name] - The name of the state.
+@param {string}  [opts.hidden] - Hide this state from the state path.
 @param {string}  [opts.bindTo] - Bind the controller to the provided name.
 @param {string}  [opts.url] - The url of the state.
 @param {Boolean} [opts.abstract] - True for abstract states.
@@ -111,6 +112,14 @@ export function State(opts) {
 			meta.state.abstract = true;
 		} else if (opts.abstract === false) {
 			meta.state.abstract = false;
+		}
+
+		if (opts.hidden === undefined) {
+			meta.state.hidden = superMeta.state.hidden;
+		} else if (opts.hidden === true) {
+			meta.state.hidden = true;
+		} else if (opts.hidden === false) {
+			meta.state.hidden = false;
 		}
 
 		meta.state.resolve = {};
@@ -267,35 +276,27 @@ export function buildUiRouterState(obj) {
 
 	let resolve = {};
 	Object.assign(resolve, meta.state.resolve);
-	controllerAttacher.$inject = [meta.state.name, '$locals', '$injector', '$scope'].concat(Object.keys(resolve));
 	controllerProvider.$inject = ['$q', '$controller', '$locals', '$injector'].concat(Object.keys(resolve));
+	controllerAttacher.$inject = [meta.state.name, '$locals', '$injector', '$scope'].concat(Object.keys(resolve));
 	resolve[meta.state.name] = controllerProvider;
 	resolve.$viewCounter = () => ({ attached: 0, count: Object.keys(views).length });
 
+	controllerProvider.$inject = controllerProvider.$inject.concat(meta.top.$inject || []);
+	for (let clb of meta.state.callbacks.onActivate) {
+		controllerProvider.$inject = controllerProvider.$inject.concat(clb.$inject || []);
+	}
+
 	let state = {
-		name:     meta.state.name,
-		url:      meta.state.url,
-		abstract: meta.state.abstract,
-		children: children,
-		resolve:  resolve,
-		views:    views,
+		name:        meta.state.name,
+		url:         meta.state.url,
+		hiddenState: meta.state.hidden,
+		abstract:    meta.state.abstract,
+		children:    children,
+		resolve:     resolve,
+		views:       views,
 	};
 
 	return state;
-
-	function controllerAttacher(ctrl, $locals, $injector, $scope) {
-		for (let clb of meta.state.callbacks.onAttach) {
-			$injector.invoke(clb, ctrl, $locals);
-		}
-
-		$scope.$on("$destroy", function() {
-			for (let clb of meta.state.callbacks.onDetach) {
-				$injector.invoke(clb, ctrl, $locals);
-			}
-		});
-
-		return ctrl;
-	}
 
 	function controllerProvider($q, $controller, $locals, $injector) {
 		return $q(function(ok, err) {
@@ -318,4 +319,45 @@ export function buildUiRouterState(obj) {
 			return $q.reject(err);
 		});
 	}
+
+	function controllerAttacher(ctrl, $locals, $injector, $scope) {
+		for (let clb of meta.state.callbacks.onAttach) {
+			$injector.invoke(clb, ctrl, $locals);
+		}
+
+		$scope.$on("$destroy", function() {
+			for (let clb of meta.state.callbacks.onDetach) {
+				$injector.invoke(clb, ctrl, $locals);
+			}
+		});
+
+		return ctrl;
+	}
+}
+
+export function flattenUiRouterStates(state, acc=[]) {
+	acc.push(state);
+
+	if (state.children) {
+		let prefix = state.name;
+		if (state.hiddenState) {
+			if (state.parent) {
+				prefix = state.parent.name;
+			} else {
+				prefix = null;
+			}
+		}
+
+		for (let child of state.children) {
+			child.parent = state;
+
+			if (prefix && !child.absoluteName) {
+				child.name = `${prefix}.${child.name}`;
+			}
+
+			flattenUiRouterStates(child, acc);
+		}
+	}
+
+	return acc;
 }
