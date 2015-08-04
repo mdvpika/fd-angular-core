@@ -448,8 +448,8 @@ function mountAt(url) {
 		buildUiRouterState: builder
 	};
 
-	function builder() {
-		var state = buildUiRouterState(this.state);
+	function builder(options) {
+		var state = buildUiRouterState(this.state, options);
 
 		if (this.url) {
 			state.url = url;
@@ -463,13 +463,13 @@ function mountAt(url) {
 	}
 }
 
-function buildUiRouterState(obj) {
+function buildUiRouterState(obj, options) {
 	if (!obj) {
 		return null;
 	}
 
 	if (obj.buildUiRouterState) {
-		var _state = obj.buildUiRouterState();
+		var _state = obj.buildUiRouterState(options);
 		return _state;
 	}
 
@@ -487,7 +487,7 @@ function buildUiRouterState(obj) {
 		for (var _iterator = meta.state.children[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
 			var child = _step.value;
 
-			children.push(buildUiRouterState(child));
+			children.push(buildUiRouterState(child, options));
 		}
 	} catch (err) {
 		_didIteratorError = true;

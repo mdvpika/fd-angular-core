@@ -211,8 +211,8 @@ export function mountAt(url, opts={}) {
 		buildUiRouterState: builder,
 	};
 
-	function builder() {
-		let state = buildUiRouterState(this.state);
+	function builder(options) {
+		let state = buildUiRouterState(this.state, options);
 
 		if (this.url) {
 			state.url = url;
@@ -226,13 +226,13 @@ export function mountAt(url, opts={}) {
 	}
 }
 
-export function buildUiRouterState(obj) {
+export function buildUiRouterState(obj, options) {
 	if (!obj) {
 		return null;
 	}
 
 	if (obj.buildUiRouterState) {
-		let state = obj.buildUiRouterState();
+		let state = obj.buildUiRouterState(options);
 		return state;
 	}
 
@@ -243,7 +243,7 @@ export function buildUiRouterState(obj) {
 
 	let children = [];
 	for (let child of meta.state.children) {
-		children.push(buildUiRouterState(child));
+		children.push(buildUiRouterState(child, options));
 	}
 
 	let views = {};
