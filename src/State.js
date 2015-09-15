@@ -357,6 +357,8 @@ export function flattenUiRouterStates(state, acc=[]) {
 				}
 
 				flattenUiRouterStates(child, acc);
+			} else {
+  				console.warn(`nil child for ${state.name}`);
 			}
 		}
 	}
