@@ -349,13 +349,15 @@ export function flattenUiRouterStates(state, acc=[]) {
 		}
 
 		for (let child of state.children) {
-			child.parent = state;
+			if (child) {
+				child.parent = state;
 
-			if (prefix && !child.absoluteName) {
-				child.name = `${prefix}.${child.name}`;
+				if (prefix && !child.absoluteName) {
+					child.name = `${prefix}.${child.name}`;
+				}
+
+				flattenUiRouterStates(child, acc);
 			}
-
-			flattenUiRouterStates(child, acc);
 		}
 	}
 
