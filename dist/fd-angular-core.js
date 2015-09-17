@@ -776,13 +776,17 @@ function flattenUiRouterStates(state) {
 			for (var _iterator8 = state.children[Symbol.iterator](), _step8; !(_iteratorNormalCompletion8 = (_step8 = _iterator8.next()).done); _iteratorNormalCompletion8 = true) {
 				var child = _step8.value;
 
-				child.parent = state;
+				if (child) {
+					child.parent = state;
 
-				if (prefix && !child.absoluteName) {
-					child.name = prefix + "." + child.name;
+					if (prefix && !child.absoluteName) {
+						child.name = prefix + "." + child.name;
+					}
+
+					flattenUiRouterStates(child, acc);
+				} else {
+					console.warn("nil child for " + state.name);
 				}
-
-				flattenUiRouterStates(child, acc);
 			}
 		} catch (err) {
 			_didIteratorError8 = true;
