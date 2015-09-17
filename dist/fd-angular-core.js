@@ -225,6 +225,7 @@ function registerLock(constructor) {
 }
 
 },{"./app":7,"./utils":10}],5:[function(require,module,exports){
+/* */
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -243,18 +244,19 @@ var DEFAULT_SUFFIX = "Controller";
 
 /**
 @function State
-@param {Object}  opts - The options
-@param {string}  [opts.name] - The name of the state.
-@param {string}  [opts.hidden] - Hide this state from the state path.
-@param {string}  [opts.bindTo] - Bind the controller to the provided name.
-@param {string}  [opts.url] - The url of the state.
-@param {Boolean} [opts.abstract] - True for abstract states.
-@param {string}  [opts.template] - An angular template.
-@param {string}  [opts.templateUrl] - A URL to an angular template.
-@param {State[]} [opts.children] - List of child states.
-@param {string}  [opts.controllerName] - The name of the controller as seen by angular.
-@param {Object}  [opts.resolve] - Any required resolved.
-@param {Object}  [opts.views] - State views
+@param {Object}   opts - The options
+@param {string}   [opts.name] - The name of the state.
+@param {string}   [opts.hidden] - Hide this state from the state path.
+@param {string}   [opts.bindTo] - Bind the controller to the provided name.
+@param {string}   [opts.url] - The url of the state.
+@param {Boolean}  [opts.abstract] - True for abstract states.
+@param {string}   [opts.template] - An angular template.
+@param {string}   [opts.templateUrl] - A URL to an angular template.
+@param {State[]}  [opts.children] - List of child states.
+@param {string}   [opts.controllerName] - The name of the controller as seen by angular.
+@param {Object}   [opts.resolve] - Any required resolved.
+@param {Object}   [opts.views] - State views
+@param {string[]} [opts.aliases] - Aliases for the current state.
 
 @example
 [@]State({
@@ -317,6 +319,8 @@ function State(opts) {
 			_name = _name[0].toLowerCase() + _name.substr(1, _name.length - DEFAULT_SUFFIX.length - 1);
 			meta.state.name = _name;
 		}
+
+		meta.state.aliases = (opts.aliases || []).concat(superMeta.state.aliases || []);
 
 		var views = {};
 		if (superMeta.state.views) {
@@ -438,7 +442,7 @@ SomeState::mountAt("/some/url")
 */
 
 function mountAt(url) {
-	var opts = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
+	var opts = arguments[1] === undefined ? {} : arguments[1];
 	var name = opts.name;
 
 	return {
@@ -451,11 +455,11 @@ function mountAt(url) {
 	function builder(options) {
 		var state = buildUiRouterState(this.state, options);
 
-		if (this.url) {
+		if (this.url !== undefined) {
 			state.url = url;
 		}
 
-		if (this.name) {
+		if (this.name !== undefined) {
 			state.name = name;
 		}
 
@@ -561,20 +565,19 @@ function buildUiRouterState(obj, options) {
 	controllerProvider.$inject = ["$q", "$controller", "$locals", "$injector"].concat(Object.keys(resolve));
 	controllerAttacher.$inject = [meta.state.name, "$locals", "$injector", "$scope"].concat(Object.keys(resolve));
 	resolve[meta.state.name] = controllerProvider;
-	resolve.$viewCounter = function () {
-		return { attached: 0, count: Object.keys(views).length };
-	};
-
-	controllerProvider.$inject = controllerProvider.$inject.concat(meta.top.$inject || []);
 	var _iteratorNormalCompletion3 = true;
 	var _didIteratorError3 = false;
 	var _iteratorError3 = undefined;
 
 	try {
-		for (var _iterator3 = meta.state.callbacks.onActivate[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
-			var clb = _step3.value;
+		for (var _iterator3 = (meta.state.aliases || [])[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
+			var alias = _step3.value;
 
-			controllerProvider.$inject = controllerProvider.$inject.concat(clb.$inject || []);
+			if (!resolve[alias]) {
+				resolve[alias] = [meta.state.name, function (mod) {
+					return mod;
+				}];
+			}
 		}
 	} catch (err) {
 		_didIteratorError3 = true;
@@ -587,6 +590,36 @@ function buildUiRouterState(obj, options) {
 		} finally {
 			if (_didIteratorError3) {
 				throw _iteratorError3;
+			}
+		}
+	}
+
+	resolve.$viewCounter = function () {
+		return { attached: 0, count: Object.keys(views).length };
+	};
+
+	controllerProvider.$inject = controllerProvider.$inject.concat(meta.top.$inject || []);
+	var _iteratorNormalCompletion4 = true;
+	var _didIteratorError4 = false;
+	var _iteratorError4 = undefined;
+
+	try {
+		for (var _iterator4 = meta.state.callbacks.onActivate[Symbol.iterator](), _step4; !(_iteratorNormalCompletion4 = (_step4 = _iterator4.next()).done); _iteratorNormalCompletion4 = true) {
+			var clb = _step4.value;
+
+			controllerProvider.$inject = controllerProvider.$inject.concat(clb.$inject || []);
+		}
+	} catch (err) {
+		_didIteratorError4 = true;
+		_iteratorError4 = err;
+	} finally {
+		try {
+			if (!_iteratorNormalCompletion4 && _iterator4["return"]) {
+				_iterator4["return"]();
+			}
+		} finally {
+			if (_didIteratorError4) {
+				throw _iteratorError4;
 			}
 		}
 	}
@@ -606,45 +639,45 @@ function buildUiRouterState(obj, options) {
 	function controllerProvider($q, $controller, $locals, $injector) {
 		return $q(function (ok, err) {
 			try {
-				var _iteratorNormalCompletion4;
+				var _iteratorNormalCompletion5;
 
-				var _didIteratorError4;
+				var _didIteratorError5;
 
-				var _iteratorError4;
+				var _iteratorError5;
 
-				var _iterator4, _step4;
+				var _iterator5, _step5;
 
 				(function () {
 					var ctrl = $controller(meta.controller.name, $locals);
 					var p = $q.when(ctrl);
 
-					_iteratorNormalCompletion4 = true;
-					_didIteratorError4 = false;
-					_iteratorError4 = undefined;
+					_iteratorNormalCompletion5 = true;
+					_didIteratorError5 = false;
+					_iteratorError5 = undefined;
 
 					try {
 						var _loop = function () {
-							var clb = _step4.value;
+							var clb = _step5.value;
 
 							p = p.then(function () {
 								return $injector.invoke(clb, ctrl, $locals);
 							});
 						};
 
-						for (_iterator4 = meta.state.callbacks.onActivate[Symbol.iterator](); !(_iteratorNormalCompletion4 = (_step4 = _iterator4.next()).done); _iteratorNormalCompletion4 = true) {
+						for (_iterator5 = meta.state.callbacks.onActivate[Symbol.iterator](); !(_iteratorNormalCompletion5 = (_step5 = _iterator5.next()).done); _iteratorNormalCompletion5 = true) {
 							_loop();
 						}
 					} catch (err) {
-						_didIteratorError4 = true;
-						_iteratorError4 = err;
+						_didIteratorError5 = true;
+						_iteratorError5 = err;
 					} finally {
 						try {
-							if (!_iteratorNormalCompletion4 && _iterator4["return"]) {
-								_iterator4["return"]();
+							if (!_iteratorNormalCompletion5 && _iterator5["return"]) {
+								_iterator5["return"]();
 							}
 						} finally {
-							if (_didIteratorError4) {
-								throw _iteratorError4;
+							if (_didIteratorError5) {
+								throw _iteratorError5;
 							}
 						}
 					}
@@ -664,53 +697,53 @@ function buildUiRouterState(obj, options) {
 	}
 
 	function controllerAttacher(ctrl, $locals, $injector, $scope) {
-		var _iteratorNormalCompletion5 = true;
-		var _didIteratorError5 = false;
-		var _iteratorError5 = undefined;
+		var _iteratorNormalCompletion6 = true;
+		var _didIteratorError6 = false;
+		var _iteratorError6 = undefined;
 
 		try {
-			for (var _iterator5 = meta.state.callbacks.onAttach[Symbol.iterator](), _step5; !(_iteratorNormalCompletion5 = (_step5 = _iterator5.next()).done); _iteratorNormalCompletion5 = true) {
-				var clb = _step5.value;
+			for (var _iterator6 = meta.state.callbacks.onAttach[Symbol.iterator](), _step6; !(_iteratorNormalCompletion6 = (_step6 = _iterator6.next()).done); _iteratorNormalCompletion6 = true) {
+				var clb = _step6.value;
 
 				$injector.invoke(clb, ctrl, $locals);
 			}
 		} catch (err) {
-			_didIteratorError5 = true;
-			_iteratorError5 = err;
+			_didIteratorError6 = true;
+			_iteratorError6 = err;
 		} finally {
 			try {
-				if (!_iteratorNormalCompletion5 && _iterator5["return"]) {
-					_iterator5["return"]();
+				if (!_iteratorNormalCompletion6 && _iterator6["return"]) {
+					_iterator6["return"]();
 				}
 			} finally {
-				if (_didIteratorError5) {
-					throw _iteratorError5;
+				if (_didIteratorError6) {
+					throw _iteratorError6;
 				}
 			}
 		}
 
 		$scope.$on("$destroy", function () {
-			var _iteratorNormalCompletion6 = true;
-			var _didIteratorError6 = false;
-			var _iteratorError6 = undefined;
+			var _iteratorNormalCompletion7 = true;
+			var _didIteratorError7 = false;
+			var _iteratorError7 = undefined;
 
 			try {
-				for (var _iterator6 = meta.state.callbacks.onDetach[Symbol.iterator](), _step6; !(_iteratorNormalCompletion6 = (_step6 = _iterator6.next()).done); _iteratorNormalCompletion6 = true) {
-					var clb = _step6.value;
+				for (var _iterator7 = meta.state.callbacks.onDetach[Symbol.iterator](), _step7; !(_iteratorNormalCompletion7 = (_step7 = _iterator7.next()).done); _iteratorNormalCompletion7 = true) {
+					var clb = _step7.value;
 
 					$injector.invoke(clb, ctrl, $locals);
 				}
 			} catch (err) {
-				_didIteratorError6 = true;
-				_iteratorError6 = err;
+				_didIteratorError7 = true;
+				_iteratorError7 = err;
 			} finally {
 				try {
-					if (!_iteratorNormalCompletion6 && _iterator6["return"]) {
-						_iterator6["return"]();
+					if (!_iteratorNormalCompletion7 && _iterator7["return"]) {
+						_iterator7["return"]();
 					}
 				} finally {
-					if (_didIteratorError6) {
-						throw _iteratorError6;
+					if (_didIteratorError7) {
+						throw _iteratorError7;
 					}
 				}
 			}
@@ -721,7 +754,7 @@ function buildUiRouterState(obj, options) {
 }
 
 function flattenUiRouterStates(state) {
-	var acc = arguments.length <= 1 || arguments[1] === undefined ? [] : arguments[1];
+	var acc = arguments[1] === undefined ? [] : arguments[1];
 
 	acc.push(state);
 
@@ -735,13 +768,13 @@ function flattenUiRouterStates(state) {
 			}
 		}
 
-		var _iteratorNormalCompletion7 = true;
-		var _didIteratorError7 = false;
-		var _iteratorError7 = undefined;
+		var _iteratorNormalCompletion8 = true;
+		var _didIteratorError8 = false;
+		var _iteratorError8 = undefined;
 
 		try {
-			for (var _iterator7 = state.children[Symbol.iterator](), _step7; !(_iteratorNormalCompletion7 = (_step7 = _iterator7.next()).done); _iteratorNormalCompletion7 = true) {
-				var child = _step7.value;
+			for (var _iterator8 = state.children[Symbol.iterator](), _step8; !(_iteratorNormalCompletion8 = (_step8 = _iterator8.next()).done); _iteratorNormalCompletion8 = true) {
+				var child = _step8.value;
 
 				child.parent = state;
 
@@ -752,16 +785,16 @@ function flattenUiRouterStates(state) {
 				flattenUiRouterStates(child, acc);
 			}
 		} catch (err) {
-			_didIteratorError7 = true;
-			_iteratorError7 = err;
+			_didIteratorError8 = true;
+			_iteratorError8 = err;
 		} finally {
 			try {
-				if (!_iteratorNormalCompletion7 && _iterator7["return"]) {
-					_iterator7["return"]();
+				if (!_iteratorNormalCompletion8 && _iterator8["return"]) {
+					_iterator8["return"]();
 				}
 			} finally {
-				if (_didIteratorError7) {
-					throw _iteratorError7;
+				if (_didIteratorError8) {
+					throw _iteratorError8;
 				}
 			}
 		}
@@ -804,7 +837,9 @@ function Redirect(stateName, stateParams) {
 			_classCallCheck(this, _Redirector);
 		}
 
-		_createDecoratedClass(Redirector, [{
+		var _Redirector = Redirector;
+
+		_createDecoratedClass(_Redirector, [{
 			key: 'attach',
 			decorators: [(0, _Inject.Inject)('$state', '$injector', '$locals', '$q')],
 			value: function attach($state, $injector, $locals, $q) {
@@ -824,7 +859,6 @@ function Redirect(stateName, stateParams) {
 			}
 		}]);
 
-		var _Redirector = Redirector;
 		Redirector = (0, _State.State)({
 			url: '',
 			template: '',
@@ -943,15 +977,16 @@ function beforeBoot(p) {
 
 function bootstrap(mainState) {
 	appRootState = mainState;
+
+	for (var _len = arguments.length, deps = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+		deps[_key - 1] = arguments[_key];
+	}
+
 	var _iteratorNormalCompletion2 = true;
 	var _didIteratorError2 = false;
 	var _iteratorError2 = undefined;
 
 	try {
-		for (var _len = arguments.length, deps = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
-			deps[_key - 1] = arguments[_key];
-		}
-
 		for (var _iterator2 = deps[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
 			var dep = _step2.value;
 

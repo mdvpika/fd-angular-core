@@ -1,3 +1,4 @@
+/* */
 import {funcMeta} from "./utils";
 import {Controller} from "./Controller";
 
@@ -5,18 +6,19 @@ const DEFAULT_SUFFIX = "Controller";
 
 /**
 @function State
-@param {Object}  opts - The options
-@param {string}  [opts.name] - The name of the state.
-@param {string}  [opts.hidden] - Hide this state from the state path.
-@param {string}  [opts.bindTo] - Bind the controller to the provided name.
-@param {string}  [opts.url] - The url of the state.
-@param {Boolean} [opts.abstract] - True for abstract states.
-@param {string}  [opts.template] - An angular template.
-@param {string}  [opts.templateUrl] - A URL to an angular template.
-@param {State[]} [opts.children] - List of child states.
-@param {string}  [opts.controllerName] - The name of the controller as seen by angular.
-@param {Object}  [opts.resolve] - Any required resolved.
-@param {Object}  [opts.views] - State views
+@param {Object}   opts - The options
+@param {string}   [opts.name] - The name of the state.
+@param {string}   [opts.hidden] - Hide this state from the state path.
+@param {string}   [opts.bindTo] - Bind the controller to the provided name.
+@param {string}   [opts.url] - The url of the state.
+@param {Boolean}  [opts.abstract] - True for abstract states.
+@param {string}   [opts.template] - An angular template.
+@param {string}   [opts.templateUrl] - A URL to an angular template.
+@param {State[]}  [opts.children] - List of child states.
+@param {string}   [opts.controllerName] - The name of the controller as seen by angular.
+@param {Object}   [opts.resolve] - Any required resolved.
+@param {Object}   [opts.views] - State views
+@param {string[]} [opts.aliases] - Aliases for the current state.
 
 @example
 [@]State({
@@ -81,6 +83,8 @@ export function State(opts) {
 			name = name[0].toLowerCase() + name.substr(1, name.length - DEFAULT_SUFFIX.length - 1);
 			meta.state.name = name;
 		}
+
+		meta.state.aliases = (opts.aliases || []).concat(superMeta.state.aliases || []);
 
 		let views = {};
 		if (superMeta.state.views) {
@@ -214,11 +218,11 @@ export function mountAt(url, opts={}) {
 	function builder(options) {
 		let state = buildUiRouterState(this.state, options);
 
-		if (this.url) {
+		if (this.url !== undefined) {
 			state.url = url;
 		}
 
-		if (this.name) {
+		if (this.name !== undefined) {
 			state.name = name;
 		}
 
@@ -279,6 +283,11 @@ export function buildUiRouterState(obj, options) {
 	controllerProvider.$inject = ['$q', '$controller', '$locals', '$injector'].concat(Object.keys(resolve));
 	controllerAttacher.$inject = [meta.state.name, '$locals', '$injector', '$scope'].concat(Object.keys(resolve));
 	resolve[meta.state.name] = controllerProvider;
+	for (let alias of (meta.state.aliases || [])) {
+		if (!resolve[alias]) {
+			resolve[alias] = [meta.state.name, function(mod){ return mod; }];
+		}
+	}
 	resolve.$viewCounter = () => ({ attached: 0, count: Object.keys(views).length });
 
 	controllerProvider.$inject = controllerProvider.$inject.concat(meta.top.$inject || []);
