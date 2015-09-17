@@ -84,6 +84,7 @@ export function State(opts) {
 			meta.state.name = name;
 		}
 
+		meta.state.bindTo = opts.bindTo;
 		meta.state.aliases = (opts.aliases || []).concat(superMeta.state.aliases || []);
 
 		let views = {};
@@ -367,7 +368,7 @@ export function flattenUiRouterStates(state, acc=[]) {
 
 				flattenUiRouterStates(child, acc);
 			} else {
-  				console.warn(`nil child for ${state.name}`);
+				console.warn(`nil child for ${state.name}`);
 			}
 		}
 	}

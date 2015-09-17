@@ -320,6 +320,7 @@ function State(opts) {
 			meta.state.name = _name;
 		}
 
+		meta.state.bindTo = opts.bindTo;
 		meta.state.aliases = (opts.aliases || []).concat(superMeta.state.aliases || []);
 
 		var views = {};
