@@ -1,6 +1,7 @@
 import $ from "jquery";
 import angular from "angular";
 import {extendInjector} from './injector';
+import {console} from 'mr-util';
 
 // Base modules
 import "angular-ui-router";
@@ -19,11 +20,15 @@ app.run(['$injector', function($injector) {
 }]);
 
 app.config(["$stateProvider", function($stateProvider) {
+	if (!document.querySelector('[ui-view], ui-view')) {
+		console.warn('No root ui-view found!');
+	}
+
 	if (appRootState) {
 		let state = buildUiRouterState(appRootState);
 		let states = flattenUiRouterStates(state);
-		for (let state of states) {
-			$stateProvider.state(state);
+		for (let s of states) {
+			$stateProvider.state(s);
 		}
 	}
 }]);

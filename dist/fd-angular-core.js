@@ -897,6 +897,8 @@ var _angular2 = _interopRequireDefault(_angular);
 
 var _injector = require("./injector");
 
+var _mrUtil = require("mr-util");
+
 // Base modules
 
 require("angular-ui-router");
@@ -916,6 +918,10 @@ app.run(["$injector", function ($injector) {
 }]);
 
 app.config(["$stateProvider", function ($stateProvider) {
+	if (!document.querySelector("[ui-view], ui-view")) {
+		_mrUtil.console.warn("No root ui-view found!");
+	}
+
 	if (appRootState) {
 		var state = (0, _State.buildUiRouterState)(appRootState);
 		var states = (0, _State.flattenUiRouterStates)(state);
@@ -925,9 +931,9 @@ app.config(["$stateProvider", function ($stateProvider) {
 
 		try {
 			for (var _iterator = states[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
-				var _state = _step.value;
+				var s = _step.value;
 
-				$stateProvider.state(_state);
+				$stateProvider.state(s);
 			}
 		} catch (err) {
 			_didIteratorError = true;
@@ -1027,7 +1033,7 @@ function bootstrap(mainState) {
 	});
 }
 
-},{"./State":5,"./injector":9,"angular":undefined,"angular-ui-router":undefined,"jquery":undefined}],8:[function(require,module,exports){
+},{"./State":5,"./injector":9,"angular":undefined,"angular-ui-router":undefined,"jquery":undefined,"mr-util":undefined}],8:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
