@@ -30,14 +30,8 @@
     "mr-util": "0.x.x"
   },
   "jspm": {
-    "jspmNodeConversion": false,
     "format": "es6",
     "main": "src/index.js",
-    "dependencies": {
-      "angular": "jspm:angular",
-      "angular-ui-router": "jspm:angular-ui-router",
-      "jquery": "jspm:jquery",
-      "mr-util": "npm:mr-util"
-    }
+    "ignore": ["node_modules/**/*"]
   }
 }
