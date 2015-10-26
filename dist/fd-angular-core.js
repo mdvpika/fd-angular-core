@@ -41,12 +41,13 @@ function Component(opts) {
 	}
 
 	opts = opts || {};
-	var _opts$restrict = opts.restrict;
+	var _opts = opts;
+	var _opts$restrict = _opts.restrict;
 	var restrict = _opts$restrict === undefined ? "EA" : _opts$restrict;
-	var _opts$scope = opts.scope;
+	var _opts$scope = _opts.scope;
 	var scope = _opts$scope === undefined ? {} : _opts$scope;
-	var template = opts.template;
-	var templateUrl = opts.templateUrl;
+	var template = _opts.template;
+	var templateUrl = _opts.templateUrl;
 
 	return register;
 
@@ -331,11 +332,11 @@ function State(opts) {
 			Object.assign(views, opts.views);
 		}
 		if (opts.template === false) {
-			views[""] = undefined;
+			views[''] = undefined;
 		} else if (opts.template !== undefined) {
-			views[""] = { template: opts.template, bindTo: opts.bindTo || meta.state.name };
+			views[''] = { template: opts.template, bindTo: opts.bindTo || meta.state.name };
 		} else if (opts.templateUrl) {
-			views[""] = { templateUrl: opts.templateUrl, bindTo: opts.bindTo || meta.state.name };
+			views[''] = { templateUrl: opts.templateUrl, bindTo: opts.bindTo || meta.state.name };
 		}
 		meta.state.views = views;
 
@@ -443,7 +444,7 @@ SomeState::mountAt("/some/url")
 */
 
 function mountAt(url) {
-	var opts = arguments[1] === undefined ? {} : arguments[1];
+	var opts = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
 	var name = opts.name;
 
 	return {
@@ -545,16 +546,16 @@ function buildUiRouterState(obj, options) {
 		}
 	}
 
-	if (meta.state.views[""] === undefined) {
+	if (meta.state.views[''] === undefined) {
 		if (children.length > 0) {
-			views[""] = {
-				template: "<ui-view></ui-view>",
+			views[''] = {
+				template: '<ui-view></ui-view>',
 				controllerAs: meta.state.bindTo || meta.state.name,
 				controller: controllerAttacher
 			};
 		} else {
-			views[""] = {
-				template: "",
+			views[''] = {
+				template: '',
 				controllerAs: meta.state.bindTo || meta.state.name,
 				controller: controllerAttacher
 			};
@@ -563,8 +564,8 @@ function buildUiRouterState(obj, options) {
 
 	var resolve = {};
 	Object.assign(resolve, meta.state.resolve);
-	controllerProvider.$inject = ["$q", "$controller", "$locals", "$injector"].concat(Object.keys(resolve));
-	controllerAttacher.$inject = [meta.state.name, "$locals", "$injector", "$scope"].concat(Object.keys(resolve));
+	controllerProvider.$inject = ['$q', '$controller', '$locals', '$injector'].concat(Object.keys(resolve));
+	controllerAttacher.$inject = [meta.state.name, '$locals', '$injector', '$scope'].concat(Object.keys(resolve));
 	resolve[meta.state.name] = controllerProvider;
 	var _iteratorNormalCompletion3 = true;
 	var _didIteratorError3 = false;
@@ -755,7 +756,7 @@ function buildUiRouterState(obj, options) {
 }
 
 function flattenUiRouterStates(state) {
-	var acc = arguments[1] === undefined ? [] : arguments[1];
+	var acc = arguments.length <= 1 || arguments[1] === undefined ? [] : arguments[1];
 
 	acc.push(state);
 
@@ -842,9 +843,7 @@ function Redirect(stateName, stateParams) {
 			_classCallCheck(this, _Redirector);
 		}
 
-		var _Redirector = Redirector;
-
-		_createDecoratedClass(_Redirector, [{
+		_createDecoratedClass(Redirector, [{
 			key: 'attach',
 			decorators: [(0, _Inject.Inject)('$state', '$injector', '$locals', '$q')],
 			value: function attach($state, $injector, $locals, $q) {
@@ -864,6 +863,7 @@ function Redirect(stateName, stateParams) {
 			}
 		}]);
 
+		var _Redirector = Redirector;
 		Redirector = (0, _State.State)({
 			url: '',
 			template: '',
@@ -876,6 +876,7 @@ function Redirect(stateName, stateParams) {
 }
 
 },{"./Inject":3,"./State":5}],7:[function(require,module,exports){
+/* */
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -895,15 +896,15 @@ var _angular = require("angular");
 
 var _angular2 = _interopRequireDefault(_angular);
 
-var _injector = require("./injector");
+var _injector = require('./injector');
 
-var _mrUtil = require("mr-util");
+var _mrUtil = require('mr-util');
 
 // Base modules
 
 require("angular-ui-router");
 
-var _State = require("./State");
+var _State = require('./State');
 
 /**
 @var {ngModule} app
@@ -913,13 +914,13 @@ var appDeps = ["ui.router"];
 var app = _angular2["default"].module("app", appDeps);
 
 exports.app = app;
-app.run(["$injector", function ($injector) {
+app.run(['$injector', function ($injector) {
 	(0, _injector.extendInjector)($injector);
 }]);
 
 app.config(["$stateProvider", function ($stateProvider) {
-	if (!document.querySelector("[ui-view], ui-view")) {
-		_mrUtil.console.warn("No root ui-view found!");
+	if (!document.querySelector('[ui-view], ui-view')) {
+		_mrUtil.console.warn('No root ui-view found!');
 	}
 
 	if (appRootState) {
@@ -966,16 +967,19 @@ function includeModule(name) {
 */
 var ng = _angular2["default"];
 exports.ng = ng;
-var beforeBootPromise = Promise.resolve(true);
+var beforeBootPromiseGo = undefined;
+var beforeBootPromise = new Promise(function (resolve) {
+	beforeBootPromiseGo = resolve;
+});
 
 /**
 @function beforeBoot
 @param {Promise} p - includes a Promise before the app is booted.
 */
 
-function beforeBoot(p) {
+function beforeBoot(func) {
 	beforeBootPromise = beforeBootPromise.then(function () {
-		return Promise.resolve(p);
+		return func();
 	});
 }
 
@@ -988,16 +992,15 @@ function beforeBoot(p) {
 
 function bootstrap(mainState) {
 	appRootState = mainState;
-
-	for (var _len = arguments.length, deps = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
-		deps[_key - 1] = arguments[_key];
-	}
-
 	var _iteratorNormalCompletion2 = true;
 	var _didIteratorError2 = false;
 	var _iteratorError2 = undefined;
 
 	try {
+		for (var _len = arguments.length, deps = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+			deps[_key - 1] = arguments[_key];
+		}
+
 		for (var _iterator2 = deps[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
 			var dep = _step2.value;
 
@@ -1018,6 +1021,7 @@ function bootstrap(mainState) {
 		}
 	}
 
+	beforeBootPromiseGo();
 	return beforeBootPromise.then(function () {
 		return new Promise(function (resolve, reject) {
 			(0, _jquery2["default"])(function () {
@@ -1130,7 +1134,7 @@ Object.defineProperty(exports, "buildUiRouterState", {
   }
 });
 
-var _utils = require("./utils");
+var _utils = require('./utils');
 
 Object.defineProperty(exports, "Metadata", {
   enumerable: true,
@@ -1139,7 +1143,7 @@ Object.defineProperty(exports, "Metadata", {
   }
 });
 
-var _StateRedirect = require("./StateRedirect");
+var _StateRedirect = require('./StateRedirect');
 
 Object.defineProperty(exports, "Redirect", {
   enumerable: true,
@@ -1158,7 +1162,7 @@ exports.extendInjector = extendInjector;
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
-var _angular = require('angular');
+var _angular = require("angular");
 
 var _angular2 = _interopRequireDefault(_angular);
 
@@ -1214,7 +1218,7 @@ exports.superClass = superClass;
 exports.funcMeta = funcMeta;
 exports.wrapFunc = wrapFunc;
 
-var _app = require("./app");
+var _app = require('./app');
 
 function dashCase(str) {
 	return str.replace(/([A-Z])/g, function ($1) {

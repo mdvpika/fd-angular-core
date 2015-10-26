@@ -1,3 +1,4 @@
+/* */
 import $ from "jquery";
 import angular from "angular";
 import {extendInjector} from './injector';
@@ -45,14 +46,15 @@ export function includeModule(name) {
 @var {angular} ng
 */
 export var ng = angular;
-var beforeBootPromise = Promise.resolve(true);
+var beforeBootPromiseGo = undefined;
+var beforeBootPromise = new Promise((resolve) => { beforeBootPromiseGo = resolve; });
 
 /**
 @function beforeBoot
 @param {Promise} p - includes a Promise before the app is booted.
 */
-export function beforeBoot(p) {
-	beforeBootPromise = beforeBootPromise.then(() => Promise.resolve(p));
+export function beforeBoot(func) {
+	beforeBootPromise = beforeBootPromise.then(() => func());
 }
 
 /**
@@ -67,6 +69,7 @@ export function bootstrap(mainState, ...deps) {
 		includeModule(dep);
 	}
 
+	beforeBootPromiseGo();
 	return beforeBootPromise.then(function() {
 		return new Promise(function(resolve, reject){
 			$(() => {
