@@ -1174,6 +1174,10 @@ _angular2['default'].injector = function createInjector() {
 };
 
 function extendInjector($injector) {
+	if (typeof $injector === 'undefined') {
+		console.warn('Called extendInjector without an $injector. This might be because you have the Batarang browser extension running.');
+		return;
+	}
 
 	var originalInvoke = $injector.invoke;
 	$injector.invoke = function invoke(fn, self, locals, serviceName) {
