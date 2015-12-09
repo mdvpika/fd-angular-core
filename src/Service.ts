@@ -2,23 +2,23 @@ import {funcMeta} from "./utils";
 import {app} from "./app";
 
 /**
-@function Service
-@public
-@param {String} [name]
 
-@example
-[@]Service()
+```js
+; @Service()
 class MyService {}
+```
 
 */
-export function Service(name) {
+export function Service(name?: string) : ClassDecorator;
+export function Service<T extends Function>(target: T) : T;
+export function Service(name) : any {
 	if (typeof name === "function") {
-		let constructor = name; name = null;
+		let constructor : Function = name; name = null;
 		return register(constructor);
 	}
 	return register;
 
-	function register(constructor){
+	function register(constructor: any){
 		registerLock(constructor);
 		let meta = funcMeta(constructor);
 
@@ -37,5 +37,5 @@ function registerLock(constructor) {
 		throw "@Service() can only be used once!";
 	}
 
-	meta.service = {};
+	meta.service = { name: null };
 }

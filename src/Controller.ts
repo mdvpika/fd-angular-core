@@ -2,15 +2,19 @@ import {funcMeta} from "./utils";
 import {app} from "./app";
 
 /**
-@function Controller
-@param {String} [name] - The name of the controller.
 
-@example
-[@]Controller()
+@param name The name of the controller.
+
+```js
+; @Controller()
 class MyController {}
-
+```
 */
-export function Controller(name, options) {
+
+export function Controller(name: string) : ClassDecorator;
+export function Controller<T extends Function>(target: T) : T;
+export function Controller<T extends Function>(target: T, options?) : T;
+export function Controller(name, options?) : any {
 	if (typeof name === "function") {
 		let constructor = name; name = null;
 		return register(constructor, options);
@@ -36,5 +40,5 @@ function registerLock(constructor) {
 		throw "@Controller() can only be used once!";
 	}
 
-	meta.controller = {};
+	meta.controller = { name: null };
 }

@@ -4,10 +4,11 @@
   "description": "Personal Angular utils",
   "repository": "https://github.com/fd/fd-angular-core.git",
   "main": "lib/index.js",
+  "typings": "lib/index",
   "scripts": {
     "test": "echo 'No tests...'",
     "deploy-doc": "make deploy",
-    "build": "make"
+    "prepublish": "tsc"
   },
   "keywords": [
     "utils",
@@ -16,28 +17,16 @@
   "author": "Simon Menke",
   "license": "MIT",
   "devDependencies": {
-    "babel": "^5.4.7",
-    "babel-eslint": "^3.1.19",
-    "browserify": "^10.2.3",
-    "eslint": "^0.24.0",
-    "exorcist": "^0.4.0",
-    "jsdoc": "^3.3.2"
+    "mocha": "^2.2.5",
+    "tsd": "^0.6.5",
+    "typedoc": "^0.3.12",
+    "typescript": "^1.7.3",
+    "unit.js": "^2.0.0"
   },
   "dependencies": {
     "angular": "1.4.x",
     "angular-ui-router": "0.2.x",
     "jquery": "*",
-    "mr-util": "0.x.x"
-  },
-  "jspm": {
-    "jspmNodeConversion": false,
-    "format": "es6",
-    "main": "src/index.js",
-    "dependencies": {
-      "angular": "jspm:angular",
-      "angular-ui-router": "jspm:angular-ui-router",
-      "jquery": "jspm:jquery",
-      "mr-util": "npm:mr-util"
-    }
+    "mr-util": "1.x.x"
   }
 }

@@ -1,20 +1,19 @@
-/* */
-import $ from "jquery";
-import angular from "angular";
+/// <reference path="../typings/tsd.d.ts" />
+
+import $ = require("jquery");
+import angular = require("angular");
 import {extendInjector} from './injector';
 import {console} from 'mr-util';
 
 // Base modules
 import "angular-ui-router";
 
-import {buildUiRouterState, flattenUiRouterStates} from './State';
+import {buildUiRouterState, flattenUiRouterStates, IState} from './State';
 
-/**
-@var {ngModule} app
-*/
+
 let appRootState = null;
 let appDeps = ["ui.router"];
-export var app = angular.module("app", appDeps);
+export var app : angular.IModule = angular.module("app", appDeps);
 
 app.run(['$injector', function($injector) {
 	extendInjector($injector);
@@ -35,35 +34,22 @@ app.config(["$stateProvider", function($stateProvider) {
 }]);
 
 /**
-@function includeModule
-@param {String} name - name of the module to include.
+@param name name of the module to include.
 */
-export function includeModule(name) {
+export function includeModule(name: string) : void {
 	appDeps.push(name);
 }
 
-/**
-@var {angular} ng
-*/
 export var ng = angular;
-var beforeBootPromiseGo = undefined;
-var beforeBootPromise = new Promise((resolve) => { beforeBootPromiseGo = resolve; });
 
-/**
-@function beforeBoot
-@param {Promise} p - includes a Promise before the app is booted.
-*/
-export function beforeBoot(func) {
+var beforeBootPromiseGo = undefined;
+var beforeBootPromise = new Promise<void>((resolve) => { beforeBootPromiseGo = resolve; });
+
+export function beforeBoot(func: () => Promise<void>) {
 	beforeBootPromise = beforeBootPromise.then(() => func());
 }
 
-/**
-@function bootstrap
-@param {State} mainState
-@param {...Sgtring} deps
-@return {Promise}
-*/
-export function bootstrap(mainState, ...deps) {
+export function bootstrap(mainState: IState, ...deps: string[]) : Promise<void> {
 	appRootState = mainState;
 	for (let dep of deps) {
 		includeModule(dep);
@@ -71,7 +57,7 @@ export function bootstrap(mainState, ...deps) {
 
 	beforeBootPromiseGo();
 	return beforeBootPromise.then(function() {
-		return new Promise(function(resolve, reject){
+		return new Promise<void>(function(resolve, reject){
 			$(() => {
 				try {
 					let injector = angular.bootstrap(document, ["app"]);

@@ -1,36 +1,145 @@
 /* */
-import {funcMeta} from "./utils";
+import {funcMeta, IMetadata, assign} from "./utils";
 import {Controller} from "./Controller";
 
 const DEFAULT_SUFFIX = "Controller";
 
-/**
-@function State
-@param {Object}   opts - The options
-@param {string}   [opts.name] - The name of the state.
-@param {string}   [opts.hidden] - Hide this state from the state path.
-@param {string}   [opts.bindTo] - Bind the controller to the provided name.
-@param {string}   [opts.url] - The url of the state.
-@param {Boolean}  [opts.abstract] - True for abstract states.
-@param {string}   [opts.template] - An angular template.
-@param {string}   [opts.templateUrl] - A URL to an angular template.
-@param {State[]}  [opts.children] - List of child states.
-@param {string}   [opts.controllerName] - The name of the controller as seen by angular.
-@param {Object}   [opts.resolve] - Any required resolved.
-@param {Object}   [opts.views] - State views
-@param {string[]} [opts.aliases] - Aliases for the current state.
+var blankStateMetadata : IMetadata = {
+	controller: null,
+	service:    null,
+	wrappers:   null,
+	base:       null,
+	top:        null,
+	name:       null,
+	superClass: null,
+	wrap:       null,
+	state: {
+		name: null,
+		bindTo: null,
+		url: null,
+		hidden: null,
+		abstract: null,
+		registered: null,
+		aliases: null,
+		children: null,
+		views: null,
+		resolve: null,
+		callbacks: null
+	}
+};
 
-@example
-[@]State({
+
+export interface StateOptions {
+
+	/**
+	 * The name of the state.
+	 */
+	name?:           string;
+
+	/**
+	 * Hide this state from the state path.
+	 */
+	hidden?:         boolean;
+
+	/**
+	 * Bind the controller to the provided name.
+	 */
+	bindTo?:         string;
+
+	/**
+	 * The url of the state.
+	 */
+	url?:            string|boolean;
+
+	/**
+	 * True for abstract states.
+	 */
+	abstract?:       boolean;
+
+	/**
+	 * An angular template.
+	 */
+	template?:       string|boolean;
+
+	/**
+	 * A URL to an angular template.
+	 */
+	templateUrl?:    string;
+
+	/**
+	 * List of child states.
+	 */
+	children?:       IState[]|boolean;
+
+	/**
+	 * The name of the controller as seen by angular.
+	 */
+	controllerName?: string;
+
+	/**
+	 * Any required resolved.
+	 */
+	resolve?:        IResolvers;
+
+	/**
+	 * State views
+	 */
+	views?:          IViews;
+
+	/**
+	 * Aliases for the current state.
+	 */
+	aliases?:        string[];
+}
+
+export interface IView {
+
+	/**
+	 * Bind the controller to the provided name.
+	 */
+	bindTo?:         string;
+
+	/**
+	 * An angular template.
+	 */
+	template?:       string|boolean;
+
+	/**
+	 * A URL to an angular template.
+	 */
+	templateUrl?:    string;
+
+}
+
+export interface IViews {
+	[index: string]: IView;
+}
+
+export interface IResolvers {
+	[index: string]: (...args: any[]) => Promise<any>;
+}
+
+export interface IState {
+}
+
+/**
+Declare a state.
+
+```js
+\@State({
 	url: "/",
 	template: `<h1>Hello World</h1>`,
 })
 class HelloWorld {
 }
+```
+
 */
-export function State(opts) {
+export function State(opts: StateOptions) : ClassDecorator;
+export function State<T extends Function>(target: T) : T;
+export function State(opts) : any {
 	if (typeof opts === "function") {
-		let constructor = opts; opts = null;
+		let constructor : Function = opts; opts = null;
 		return register(constructor);
 	}
 
@@ -38,12 +147,12 @@ export function State(opts) {
 
 	return register;
 
-	function register(constructor) {
+	function register(constructor: Function) {
 		registerLock(constructor);
 		Controller(constructor, { name: opts.controllerName });
 
 		let meta = stateMeta(constructor);
-		let superMeta = stateMeta(meta.superClass) || { state: {} };
+		let superMeta : IMetadata = stateMeta(meta.superClass) || blankStateMetadata;
 
 		let prototype = constructor.prototype;
 		if (prototype.activate) {
@@ -87,12 +196,12 @@ export function State(opts) {
 		meta.state.bindTo = opts.bindTo;
 		meta.state.aliases = (opts.aliases || []).concat(superMeta.state.aliases || []);
 
-		let views = {};
+		let views : IViews = {};
 		if (superMeta.state.views) {
-			Object.assign(views, superMeta.state.views);
+			assign(views, superMeta.state.views);
 		}
 		if (opts.views) {
-			Object.assign(views, opts.views);
+			assign(views, opts.views);
 		}
 		if (opts.template === false) {
 			views[''] = undefined;
@@ -129,16 +238,16 @@ export function State(opts) {
 
 		meta.state.resolve = {};
 		if (opts.resolve !== false) {
-			Object.assign(meta.state.resolve, superMeta.state.resolve);
+			assign(meta.state.resolve, superMeta.state.resolve);
 			if (opts.resolve) {
-				Object.assign(meta.state.resolve, opts.resolve);
+				assign(meta.state.resolve, opts.resolve);
 			}
 		}
 
 	}
 }
 
-function stateMeta(constructor) {
+function stateMeta(constructor) : IMetadata {
 	if (!constructor) {
 		return null;
 	}
@@ -150,6 +259,16 @@ function stateMeta(constructor) {
 	}
 
 	meta.state = {
+		name: null,
+		bindTo: null,
+		url: null,
+		hidden: null,
+		abstract: null,
+		registered: null,
+		aliases: null,
+		children: null,
+		views: null,
+		resolve: null,
 		callbacks: {
 			onActivate: [],
 			onAttach:   [],
@@ -170,7 +289,13 @@ function registerLock(constructor) {
 	meta.state.registered = true;
 }
 
-State.onActivate = function onActivate(target, name, desc) {
+export module State {
+	export declare var onActivate : MethodDecorator;
+	export declare var onAttach : MethodDecorator;
+	export declare var onDetach : MethodDecorator;
+}
+
+State['onActivate'] = function onActivate(target, name, desc) {
 	if (typeof desc.value !== "function") {
 		throw "@State.onActivate expects a function target";
 	}
@@ -179,7 +304,7 @@ State.onActivate = function onActivate(target, name, desc) {
 	meta.state.callbacks.onActivate.push(desc.value);
 };
 
-State.onAttach = function onAttach(target, name, desc) {
+State['onAttach'] = function onAttach(target, name, desc) {
 	if (typeof desc.value !== "function") {
 		throw "@State.onAttach expects a function target";
 	}
@@ -188,7 +313,7 @@ State.onAttach = function onAttach(target, name, desc) {
 	meta.state.callbacks.onAttach.push(desc.value);
 };
 
-State.onDetach = function onDetach(target, name, desc) {
+State['onDetach'] = function onDetach(target, name, desc) {
 	if (typeof desc.value !== "function") {
 		throw "@State.onDetach expects a function target";
 	}
@@ -197,17 +322,17 @@ State.onDetach = function onDetach(target, name, desc) {
 	meta.state.callbacks.onDetach.push(desc.value);
 };
 
-/**
-@function mountAt
-@param {String} url
-@param {Object} [opts]
-@param {String} [opts.name]
+export interface MountOptions {
+	name?: string;
+}
 
-@example
+/**
+```js
 SomeState::mountAt("/some/url")
+```
 */
-export function mountAt(url, opts={}) {
-	let {name} = opts;
+export function mountAt(url:string, opts?: MountOptions) : IState {
+	let {name} = opts || { name: undefined };
 
 	return {
 		state:              this,
@@ -231,7 +356,8 @@ export function mountAt(url, opts={}) {
 	}
 }
 
-export function buildUiRouterState(obj, options) {
+/** @hidden */
+export function buildUiRouterState(obj, options?) {
 	if (!obj) {
 		return null;
 	}
@@ -280,7 +406,7 @@ export function buildUiRouterState(obj, options) {
 	}
 
 	let resolve = {};
-	Object.assign(resolve, meta.state.resolve);
+	assign(resolve, meta.state.resolve);
 	controllerProvider.$inject = ['$q', '$controller', '$locals', '$injector'].concat(Object.keys(resolve));
 	controllerAttacher.$inject = [meta.state.name, '$locals', '$injector', '$scope'].concat(Object.keys(resolve));
 	resolve[meta.state.name] = controllerProvider;
@@ -289,7 +415,7 @@ export function buildUiRouterState(obj, options) {
 			resolve[alias] = [meta.state.name, function(mod){ return mod; }];
 		}
 	}
-	resolve.$viewCounter = () => ({ attached: 0, count: Object.keys(views).length });
+	resolve['$viewCounter'] = () => ({ attached: 0, count: Object.keys(views).length });
 
 	controllerProvider.$inject = controllerProvider.$inject.concat(meta.top.$inject || []);
 	for (let clb of meta.state.callbacks.onActivate) {
@@ -314,8 +440,11 @@ export function buildUiRouterState(obj, options) {
 				let ctrl = $controller(meta.controller.name, $locals);
 				let p = $q.when(ctrl);
 
-				for (let clb of meta.state.callbacks.onActivate) {
+				let _apply = function(clb) {
 					p = p.then(() => $injector.invoke(clb, ctrl, $locals));
+				};
+				for (let clb of meta.state.callbacks.onActivate) {
+					_apply(clb);
 				}
 
 				p = p.then(() => ctrl);
@@ -345,6 +474,7 @@ export function buildUiRouterState(obj, options) {
 	}
 }
 
+/** @hidden */
 export function flattenUiRouterStates(state, acc=[]) {
 	acc.push(state);
 

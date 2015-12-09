@@ -1,4 +1,5 @@
-import angular from "angular";
+import angular = require("angular");
+import {console} from 'mr-util';
 
 var originalInjector = angular.injector;
 angular.injector = function createInjector() {
@@ -7,6 +8,7 @@ angular.injector = function createInjector() {
 	return i;
 };
 
+/** @hidden */
 export function extendInjector($injector) {
 	if (typeof $injector === 'undefined') {
 		console.warn('Called extendInjector without an $injector. This might be because you have the Batarang browser extension running.');

@@ -4,26 +4,28 @@ import {Controller} from "./Controller";
 
 const DEFAULT_SUFFIX = "Controller";
 
+
+export interface ComponentOptions {
+	name?: string;
+	restrict?: string;
+	scope?: Object;
+	template?: string|boolean;
+	templateUrl?: string;
+}
+
 /**
 Declare an angular Component directive.
 
-@function Component
-
-@param {Object} [opts]
-@param {String} [opts.name]
-@param {String} [opts.restrict="EA"]
-@param {Object} [opts.scope={}]
-@param {String} [opts.template]
-@param {String} [opts.templateUrl]
-
-@example
-[@]Component({
+```js
+; @Component({
 	scope: { "attr": "=" }
 })
 class MyComponentController {}
-
+```
 */
-export function Component(opts) {
+export function Component(opts: ComponentOptions) : ClassDecorator;
+export function Component<T extends Function>(target: T) : T;
+export function Component(opts) : any {
 	if (typeof opts === "function") {
 		let constructor = opts; opts = null;
 		return register(constructor);

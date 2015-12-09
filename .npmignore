@@ -7,5 +7,10 @@ Thumbs.db
 .DS_Store
 
 # Ignored files
-/lib
-/doc
+.travis.yml
+Makefile
+doc/
+script/
+src/
+tsconfig.json
+tsd.json

@@ -1,18 +1,20 @@
 
 /**
-@function Inject
-@param {...String} deps - Names of values to inject.
 
-@example
-[@]Inject('$scope')
+@param deps Names of values to inject.
+
+```js
+; @Inject('$scope')
 class MyController {
 	constructor($scope) {
 		// ...
 	}
 }
-
+```
 */
-export function Inject(...deps) {
+export function Inject(...deps: string[]) : MethodDecorator
+export function Inject(...deps: string[]) : ClassDecorator
+export function Inject(...deps: string[]) : any {
 	return function (target, name, desc){
 		let isMethod = desc && (typeof desc.value === "function");
 

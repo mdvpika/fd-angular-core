@@ -1,9 +1,11 @@
-import {State} from './State';
+import {State, IState} from './State';
 import {Inject} from './Inject';
 
 let redirectId = 0;
 
-export function Redirect(stateName, stateParams) {
+export function Redirect(func: Function) : IState;
+export function Redirect(name: string, params: Object) : IState;
+export function Redirect(stateName, stateParams?) : IState {
 	redirectId++;
 
 	let func;
