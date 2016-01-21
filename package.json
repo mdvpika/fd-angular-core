@@ -1,6 +1,6 @@
 {
   "name": "fd-angular-core",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Personal Angular utils",
   "repository": "https://github.com/fd/fd-angular-core.git",
   "main": "lib/index.js",
