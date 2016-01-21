@@ -12,6 +12,8 @@ Declare an angular Component directive.
 @param {Object} [opts]
 @param {String} [opts.name]
 @param {String} [opts.restrict="EA"]
+@param {Boolean} [opts.restrict="false"]
+@param {Boolean} [opts.transclude="EA"]
 @param {Object} [opts.scope={}]
 @param {String} [opts.template]
 @param {String} [opts.templateUrl]
@@ -32,6 +34,8 @@ export function Component(opts) {
 	opts = (opts || {});
 	var {
 		restrict="EA",
+		replace=false,
+		transclude=false,
 		scope={},
 		template,
 		templateUrl,
@@ -64,6 +68,8 @@ export function Component(opts) {
 				controllerAs:     name,
 				template:         template,
 				templateUrl:      templateUrl,
+				replace:          replace,
+				transclude:       transclude,
 			};
 		});
 	}
