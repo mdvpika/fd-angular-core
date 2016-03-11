@@ -17,6 +17,7 @@ const DEFAULT_SUFFIX = "Controller";
 @param {State[]}  [opts.children] - List of child states.
 @param {string}   [opts.controllerName] - The name of the controller as seen by angular.
 @param {Object}   [opts.resolve] - Any required resolved.
+@param {Object}   [opts.data] - Data to associate with this state.
 @param {Object}   [opts.views] - State views
 @param {string[]} [opts.aliases] - Aliases for the current state.
 
@@ -132,6 +133,14 @@ export function State(opts) {
 			Object.assign(meta.state.resolve, superMeta.state.resolve);
 			if (opts.resolve) {
 				Object.assign(meta.state.resolve, opts.resolve);
+			}
+		}
+
+		meta.state.data = {};
+		if (opts.data !== false) {
+			Object.assign(meta.state.data, superMeta.state.data);
+			if (opts.data) {
+				Object.assign(meta.state.data, opts.data);
 			}
 		}
 
@@ -304,6 +313,7 @@ export function buildUiRouterState(obj, options) {
 		children:    children,
 		resolve:     resolve,
 		views:       views,
+		data:        meta.state.data,
 	};
 
 	return state;
