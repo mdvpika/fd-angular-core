@@ -43,6 +43,7 @@ export interface StateMetadata {
 	children:   IState[];
 	views:      IViews;
 	resolve:    IResolvers;
+	data:       Object|boolean;
 	callbacks: {
 		onActivate: Function[];
 		onAttach: Function[];

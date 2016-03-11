@@ -24,6 +24,7 @@ var blankStateMetadata : IMetadata = {
 		children: null,
 		views: null,
 		resolve: null,
+		data: null,
 		callbacks: null
 	}
 };
@@ -80,6 +81,11 @@ export interface StateOptions {
 	 * Any required resolved.
 	 */
 	resolve?:        IResolvers;
+
+	/**
+	 * Data to associate with this state.
+	 */
+	data?: Object|boolean;
 
 	/**
 	 * State views
@@ -244,6 +250,14 @@ export function State(opts) : any {
 			}
 		}
 
+		meta.state.data = {};
+		if (opts.data !== false) {
+			assign(meta.state.data, superMeta.state.data);
+			if (opts.data) {
+				assign(meta.state.data, opts.data);
+			}
+		}
+
 	}
 }
 
@@ -269,6 +283,7 @@ function stateMeta(constructor) : IMetadata {
 		children: null,
 		views: null,
 		resolve: null,
+		data: null,
 		callbacks: {
 			onActivate: [],
 			onAttach:   [],
@@ -427,6 +442,7 @@ export function buildUiRouterState(obj, options?) {
 		url:         meta.state.url,
 		hiddenState: meta.state.hidden,
 		abstract:    meta.state.abstract,
+		data:        meta.state.data,
 		children:    children,
 		resolve:     resolve,
 		views:       views,
