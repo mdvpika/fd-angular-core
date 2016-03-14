@@ -24,10 +24,10 @@
     "jsdoc": "^3.3.2"
   },
   "dependencies": {
-    "angular": "1.4.x",
+    "angular": "1.5.x",
     "angular-ui-router": "0.2.x",
-    "jquery": "*",
-    "mr-util": "0.x.x"
+    "jquery": "2.x.x",
+    "mr-util": "1.x.x"
   },
   "jspm": {
     "jspmNodeConversion": false,
