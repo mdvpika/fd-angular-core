@@ -40,7 +40,7 @@ export function funcMeta(func) {
 		controller: null,
 		service:    null,
 		state:      null,
-		wrappers:   null,
+		wrappers:   [],
 		base:       func,
 		top:        func,
 		name:       getName(),
